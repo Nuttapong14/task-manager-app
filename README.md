@@ -1,184 +1,183 @@
-# TaskFlow - Task Manager Application
-### ***(This is a Vibe Coding From V0)***
+# Supabase CLI
 
-A modern, responsive task management application built with Next.js, React, and TypeScript. TaskFlow provides an intuitive interface for managing projects and tasks with a beautiful glassmorphism design and smooth animations.
+[![Coverage Status](https://coveralls.io/repos/github/supabase/cli/badge.svg?branch=main)](https://coveralls.io/github/supabase/cli?branch=main) [![Bitbucket Pipelines](https://img.shields.io/bitbucket/pipelines/supabase-cli/setup-cli/master?style=flat-square&label=Bitbucket%20Canary)](https://bitbucket.org/supabase-cli/setup-cli/pipelines) [![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/sweatybridge%2Fsetup-cli?label=Gitlab%20Canary)
+](https://gitlab.com/sweatybridge/setup-cli/-/pipelines)
 
-## ✨ Features
+[Supabase](https://supabase.io) is an open source Firebase alternative. We're building the features of Firebase using enterprise-grade open source tools.
 
-- **Project Management**: Create and organize multiple projects with custom colors and descriptions
-- **Kanban Board**: Visual task management with drag-and-drop functionality (To Do, In Progress, Done)
-- **User Authentication**: Secure login system with user profiles
-- **Real-time Updates**: Live updates using WebSocket connections
-- **Responsive Design**: Works seamlessly on desktop, tablet, and mobile devices
-- **Dark Theme**: Modern glassmorphism UI with dark theme
-- **Task Prioritization**: Set task priorities (Low, Medium, High) with color coding
-- **Team Collaboration**: Add team members to projects and assign tasks
-- **Dashboard Analytics**: Overview of projects, active tasks, and team statistics
+This repository contains all the functionality for Supabase CLI.
 
-## 🚀 Tech Stack
+- [x] Running Supabase locally
+- [x] Managing database migrations
+- [x] Creating and deploying Supabase Functions
+- [x] Generating types directly from your database schema
+- [x] Making authenticated HTTP requests to [Management API](https://supabase.com/docs/reference/api/introduction)
 
-- **Frontend**: Next.js 14, React 18, TypeScript
-- **UI Components**: Radix UI primitives with custom styling
-- **Styling**: Tailwind CSS with custom glassmorphism effects
-- **Animations**: Framer Motion for smooth transitions
-- **Icons**: Lucide React
-- **Form Handling**: React Hook Form with Zod validation
-- **State Management**: React hooks and context
-- **Real-time**: WebSocket API routes
+## Getting started
 
-## 📦 Installation
+### Install the CLI
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd task-manager-app
-   ```
+Available via [NPM](https://www.npmjs.com) as dev dependency. To install:
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   # or
-   pnpm install
-   # or
-   yarn install
-   ```
-
-3. **Set up the database** (if applicable)
-   ```bash
-   # Run the database setup script
-   # Make sure to configure your database connection first
-   ```
-
-4. **Start the development server**
-   ```bash
-   npm run dev
-   # or
-   pnpm dev
-   # or
-   yarn dev
-   ```
-
-5. **Open your browser**
-   Navigate to [http://localhost:3000](http://localhost:3000)
-
-## 🏗️ Project Structure
-
-```
-task-manager-app/
-├── app/                    # Next.js app directory
-│   ├── api/               # API routes
-│   │   └── socket/        # WebSocket API
-│   ├── globals.css        # Global styles
-│   ├── layout.tsx         # Root layout
-│   └── page.tsx           # Home page
-├── components/            # React components
-│   ├── ui/               # Reusable UI components (Radix UI)
-│   ├── auth-provider.tsx # Authentication context
-│   ├── dashboard.tsx     # Main dashboard component
-│   ├── project-board.tsx # Kanban board component
-│   ├── task-modal.tsx    # Task details modal
-│   └── ...
-├── hooks/                # Custom React hooks
-├── lib/                  # Utility functions
-├── public/              # Static assets
-├── scripts/             # Database scripts
-└── styles/              # Additional styles
+```bash
+npm i supabase --save-dev
 ```
 
-## 🎨 UI Components
+To install the beta release channel:
 
-The application uses a comprehensive set of UI components built on top of Radix UI:
+```bash
+npm i supabase@beta --save-dev
+```
 
-- **Layout**: Cards, Separators, Resizable panels
-- **Navigation**: Breadcrumbs, Navigation menu, Sidebar
-- **Forms**: Input, Textarea, Select, Checkbox, Radio groups
-- **Feedback**: Toast notifications, Alert dialogs, Progress bars
-- **Data Display**: Tables, Badges, Avatars, Charts
-- **Overlays**: Modals, Popovers, Tooltips, Dropdowns
+When installing with yarn 4, you need to disable experimental fetch with the following nodejs config.
 
-## 🔧 Available Scripts
+```
+NODE_OPTIONS=--no-experimental-fetch yarn add supabase
+```
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
+> **Note**
+For Bun versions below v1.0.17, you must add `supabase` as a [trusted dependency](https://bun.sh/guides/install/trusted) before running `bun add -D supabase`.
 
-## 🎯 Key Features Breakdown
+<details>
+  <summary><b>macOS</b></summary>
 
-### Dashboard
-- Project overview with statistics
-- Quick access to recent projects
-- Team member count and active tasks
-- Search functionality for projects
+  Available via [Homebrew](https://brew.sh). To install:
 
-### Project Board
-- Kanban-style task management
-- Three columns: To Do, In Progress, Done
-- Task cards with priority indicators
-- Assignee avatars and due dates
-- Comment counts and tags
+  ```sh
+  brew install supabase/tap/supabase
+  ```
 
-### Task Management
-- Create, edit, and delete tasks
-- Set priorities and due dates
-- Assign tasks to team members
-- Add descriptions and tags
-- Track task progress
+  To install the beta release channel:
+  
+  ```sh
+  brew install supabase/tap/supabase-beta
+  brew link --overwrite supabase-beta
+  ```
+  
+  To upgrade:
 
-### Authentication
-- User login and logout
-- User profile management
-- Protected routes
+  ```sh
+  brew upgrade supabase
+  ```
+</details>
 
-## 🎨 Design System
+<details>
+  <summary><b>Windows</b></summary>
 
-The application features a modern glassmorphism design with:
+  Available via [Scoop](https://scoop.sh). To install:
 
-- **Glass Cards**: Translucent backgrounds with blur effects
-- **Gradient Accents**: Purple to pink gradient theme
-- **Smooth Animations**: Framer Motion powered transitions
-- **Responsive Layout**: Mobile-first design approach
-- **Dark Theme**: Optimized for dark environments
+  ```powershell
+  scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
+  scoop install supabase
+  ```
 
-## 🔮 Future Enhancements
+  To upgrade:
 
-- [ ] Drag and drop task reordering
-- [ ] File attachments for tasks
-- [ ] Time tracking functionality
-- [ ] Email notifications
-- [ ] Advanced filtering and sorting
-- [ ] Project templates
-- [ ] Calendar integration
-- [ ] Mobile app development
+  ```powershell
+  scoop update supabase
+  ```
+</details>
 
-## 🤝 Contributing
+<details>
+  <summary><b>Linux</b></summary>
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+  Available via [Homebrew](https://brew.sh) and Linux packages.
 
-## 📄 License
+  #### via Homebrew
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+  To install:
 
-## 🆘 Support
+  ```sh
+  brew install supabase/tap/supabase
+  ```
 
-If you encounter any issues or have questions, please:
+  To upgrade:
 
-1. Check the existing issues on GitHub
-2. Create a new issue with detailed information
-3. Provide steps to reproduce any bugs
+  ```sh
+  brew upgrade supabase
+  ```
 
-## 🙏 Acknowledgments
+  #### via Linux packages
 
-- [Next.js](https://nextjs.org/) for the React framework
-- [Radix UI](https://radix-ui.com/) for accessible UI components
-- [Tailwind CSS](https://tailwindcss.com/) for styling
-- [Framer Motion](https://framer.com/motion/) for animations
-- [Lucide](https://lucide.dev/) for beautiful icons
+  Linux packages are provided in [Releases](https://github.com/supabase/cli/releases). To install, download the `.apk`/`.deb`/`.rpm`/`.pkg.tar.zst` file depending on your package manager and run the respective commands.
 
----
+  ```sh
+  sudo apk add --allow-untrusted <...>.apk
+  ```
 
-Built with ❤️ using modern web technologies
+  ```sh
+  sudo dpkg -i <...>.deb
+  ```
+
+  ```sh
+  sudo rpm -i <...>.rpm
+  ```
+
+  ```sh
+  sudo pacman -U <...>.pkg.tar.zst
+  ```
+</details>
+
+<details>
+  <summary><b>Other Platforms</b></summary>
+
+  You can also install the CLI via [go modules](https://go.dev/ref/mod#go-install) without the help of package managers.
+
+  ```sh
+  go install github.com/supabase/cli@latest
+  ```
+
+  Add a symlink to the binary in `$PATH` for easier access:
+
+  ```sh
+  ln -s "$(go env GOPATH)/bin/cli" /usr/bin/supabase
+  ```
+
+  This works on other non-standard Linux distros.
+</details>
+
+<details>
+  <summary><b>Community Maintained Packages</b></summary>
+
+  Available via [pkgx](https://pkgx.sh/). Package script [here](https://github.com/pkgxdev/pantry/blob/main/projects/supabase.com/cli/package.yml).
+  To install in your working directory:
+
+  ```bash
+  pkgx install supabase
+  ```
+
+  Available via [Nixpkgs](https://nixos.org/). Package script [here](https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/supabase-cli/default.nix).
+</details>
+
+### Run the CLI
+
+```bash
+supabase bootstrap
+```
+
+Or using npx:
+
+```bash
+npx supabase bootstrap
+```
+
+The bootstrap command will guide you through the process of setting up a Supabase project using one of the [starter](https://github.com/supabase-community/supabase-samples/blob/main/samples.json) templates.
+
+## Docs
+
+Command & config reference can be found [here](https://supabase.com/docs/reference/cli/about).
+
+## Breaking changes
+
+We follow semantic versioning for changes that directly impact CLI commands, flags, and configurations.
+
+However, due to dependencies on other service images, we cannot guarantee that schema migrations, seed.sql, and generated types will always work for the same CLI major version. If you need such guarantees, we encourage you to pin a specific version of CLI in package.json.
+
+## Developing
+
+To run from source:
+
+```sh
+# Go >= 1.22
+go run . help
+```

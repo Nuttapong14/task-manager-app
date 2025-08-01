@@ -43,64 +43,7 @@ interface ProjectBoardProps {
   onBack: () => void
 }
 
-const mockTasks: Task[] = [
-  {
-    id: "1",
-    title: "Design Homepage Layout",
-    description: "Create wireframes and mockups for the new homepage design",
-    status: "in-progress",
-    priority: "high",
-    assignee: {
-      name: "Alice Johnson",
-      avatar: "/placeholder.svg?height=32&width=32",
-    },
-    dueDate: "2024-01-25",
-    tags: ["design", "ui/ux"],
-    comments: 3,
-  },
-  {
-    id: "2",
-    title: "Set up Authentication",
-    description: "Implement user login and registration system",
-    status: "todo",
-    priority: "medium",
-    assignee: {
-      name: "Bob Smith",
-      avatar: "/placeholder.svg?height=32&width=32",
-    },
-    dueDate: "2024-01-28",
-    tags: ["backend", "auth"],
-    comments: 1,
-  },
-  {
-    id: "3",
-    title: "Database Schema",
-    description: "Design and implement the database structure",
-    status: "done",
-    priority: "high",
-    assignee: {
-      name: "Carol Davis",
-      avatar: "/placeholder.svg?height=32&width=32",
-    },
-    dueDate: "2024-01-20",
-    tags: ["database", "backend"],
-    comments: 5,
-  },
-  {
-    id: "4",
-    title: "Mobile Responsive Design",
-    description: "Ensure the website works perfectly on mobile devices",
-    status: "todo",
-    priority: "medium",
-    assignee: {
-      name: "David Wilson",
-      avatar: "/placeholder.svg?height=32&width=32",
-    },
-    dueDate: "2024-02-01",
-    tags: ["frontend", "responsive"],
-    comments: 0,
-  },
-]
+// Tasks will be loaded from the database
 
 const columns = [
   { id: "todo", title: "To Do", color: "from-gray-500 to-gray-600" },
@@ -115,7 +58,7 @@ const priorityColors = {
 }
 
 export function ProjectBoard({ project, onBack }: ProjectBoardProps) {
-  const [tasks, setTasks] = useState<Task[]>(mockTasks)
+  const [tasks, setTasks] = useState<Task[]>([])
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [showNewTask, setShowNewTask] = useState(false)
   const [newTaskColumn, setNewTaskColumn] = useState<string>("todo")
@@ -302,3 +245,5 @@ export function ProjectBoard({ project, onBack }: ProjectBoardProps) {
     </div>
   )
 }
+
+// this is a project borad to show TODO In Progress and Done!

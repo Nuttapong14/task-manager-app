@@ -103,3 +103,25 @@
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.5);
 }
+
+/* Ensure popover appears above modal */
+[data-radix-popper-content-wrapper] {
+  z-index: 10000 !important;
+}
+
+/* Calendar specific styling */
+.rdp {
+  --rdp-cell-size: 36px;
+  --rdp-accent-color: rgb(168 85 247);
+  --rdp-background-color: rgb(30 41 59);
+  margin: 0;
+}
+
+.rdp-button:hover:not([disabled]):not(.rdp-day_selected) {
+  background-color: rgba(168, 85, 247, 0.2);
+}
+
+.rdp-button:focus-visible {
+  outline: 2px solid rgb(168 85 247);
+  outline-offset: 2px;
+}

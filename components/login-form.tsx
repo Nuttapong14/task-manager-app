@@ -14,16 +14,26 @@ import { Mail, Lock, Sparkles } from "lucide-react"
 export function LoginForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [name, setName] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const { login } = useAuth()
+  const [isSignUp, setIsSignUp] = useState(false)
+  const [error, setError] = useState("")
+  const { login, signup } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError("")
+    
     try {
-      await login(email, password)
-    } catch (error) {
-      console.error("Login failed:", error)
+      if (isSignUp) {
+        await signup(email, password, name)
+      } else {
+        await login(email, password)
+      }
+    } catch (error: any) {
+      console.error("Auth failed:", error)
+      setError(error.message || `${isSignUp ? 'Sign up' : 'Login'} failed`)
     } finally {
       setIsLoading(false)
     }

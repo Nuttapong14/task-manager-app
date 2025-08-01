@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,7 +10,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAuth } from "@/components/auth-provider"
 import { ProjectBoard } from "@/components/project-board"
 import { NewProjectModal } from "@/components/new-project-modal"
-import { Plus, Search, Bell, Settings, LogOut, Users, Calendar, BarChart3, Folder } from "lucide-react"
+import { projectApi } from "@/lib/api"
+import { Plus, Search, Bell, Settings, LogOut, Users, Calendar, BarChart3, Folder, Trash2, MoreVertical } from "lucide-react"
 
 interface Project {
   id: string
@@ -22,45 +23,121 @@ interface Project {
     total: number
     completed: number
   }
-  dueDate: string
+  due_date: string | null
 }
-
-const mockProjects: Project[] = [
-  {
-    id: "1",
-    name: "Website Redesign",
-    description: "Complete overhaul of company website with modern design",
-    color: "from-purple-500 to-pink-500",
-    members: 5,
-    tasks: { total: 12, completed: 8 },
-    dueDate: "2024-02-15",
-  },
-  {
-    id: "2",
-    name: "Mobile App",
-    description: "Native iOS and Android application development",
-    color: "from-blue-500 to-cyan-500",
-    members: 3,
-    tasks: { total: 18, completed: 6 },
-    dueDate: "2024-03-01",
-  },
-  {
-    id: "3",
-    name: "Marketing Campaign",
-    description: "Q1 digital marketing strategy and execution",
-    color: "from-green-500 to-emerald-500",
-    members: 4,
-    tasks: { total: 8, completed: 3 },
-    dueDate: "2024-01-30",
-  },
-]
 
 export function Dashboard() {
   const { user, logout } = useAuth()
-  const [projects, setProjects] = useState<Project[]>(mockProjects)
+  const [projects, setProjects] = useState<Project[]>([])
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [showNewProject, setShowNewProject] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    if (user) {
+      loadProjects()
+    }
+  }, [user])
+
+  const loadProjects = async () => {
+    try {
+      setIsLoading(true)
+      console.log('Loading projects...')
+      const data = await projectApi.getProjects()
+      console.log('Projects loaded:', data)
+      setProjects(data)
+    } catch (error) {
+      console.error('Error loading projects:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleCreateProject = async (projectData: {
+    name: string
+    description: string
+    color: string
+    dueDate: string | null
+  }) => {
+    console.log('=== CREATING PROJECT ===')
+    console.log('Project data:', projectData)
+    console.log('Current user:', user)
+    
+    if (!user?.id) {
+      alert('You must be logged in to create a project.')
+      return
+    }
+
+    // Create project locally first to show immediately
+    const newProject: Project = {
+      id: `temp-${Date.now()}`,
+      name: projectData.name,
+      description: projectData.description,
+      color: projectData.color,
+      due_date: projectData.dueDate,
+      members: 1,
+      tasks: { total: 0, completed: 0 },
+      owner_id: user.id,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+
+    // Add to local state immediately
+    setProjects(prev => [newProject, ...prev])
+    setShowNewProject(false)
+    
+    // Show success message
+    alert(`Project "${projectData.name}" created successfully!`)
+
+    // Try to save to database in background
+    try {
+      const projectToCreate = {
+        name: projectData.name,
+        description: projectData.description,
+        color: projectData.color,
+        due_date: projectData.dueDate,
+        owner_id: user.id
+      }
+      
+      console.log('Saving to database:', projectToCreate)
+      const result = await projectApi.createProject(projectToCreate)
+      console.log('Database save result:', result)
+      
+      // Update with real ID if successful
+      if (result) {
+        setProjects(prev => prev.map(p => 
+          p.id === newProject.id ? { ...newProject, id: result.id } : p
+        ))
+      }
+    } catch (error) {
+      console.error('Database save failed:', error)
+      // Keep the project in local state even if DB save fails
+    }
+  }
+
+  const handleDeleteProject = async (projectId: string, projectName: string) => {
+    if (!confirm(`Are you sure you want to delete "${projectName}"? This action cannot be undone.`)) {
+      return
+    }
+
+    try {
+      // Remove from local state immediately
+      setProjects(prev => prev.filter(p => p.id !== projectId))
+      
+      // Try to delete from database
+      if (!projectId.startsWith('temp-')) {
+        await projectApi.deleteProject(projectId)
+      }
+      
+      alert(`Project "${projectName}" deleted successfully!`)
+    } catch (error) {
+      console.error('Error deleting project:', error)
+      // Re-add to local state if database deletion failed
+      loadProjects()
+      alert('Failed to delete project from database, but removed from view.')
+    }
+  }
 
   const filteredProjects = projects.filter(
     (project) =>
@@ -182,7 +259,17 @@ export function Dashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-white/70 text-sm">Due This Week</p>
-                  <p className="text-2xl font-bold text-white">3</p>
+                  <p className="text-2xl font-bold text-white">
+                    {(() => {
+                      const now = new Date()
+                      const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+                      return projects.filter(project => {
+                        if (!project.due_date) return false
+                        const dueDate = new Date(project.due_date)
+                        return dueDate >= now && dueDate <= weekFromNow
+                      }).length
+                    })()}
+                  </p>
                 </div>
                 <div className="w-12 h-12 bg-orange-500/20 rounded-lg flex items-center justify-center">
                   <Calendar className="w-6 h-6 text-orange-400" />
@@ -221,7 +308,29 @@ export function Dashboard() {
           transition={{ delay: 0.4 }}
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
         >
-          {filteredProjects.map((project, index) => (
+          {filteredProjects.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="col-span-full text-center py-12"
+            >
+              <div className="glass-card border-white/10 p-8 rounded-lg">
+                <Folder className="w-16 h-16 text-white/30 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-white mb-2">No Projects Yet</h3>
+                <p className="text-white/70 mb-4">
+                  Create your first project to get started with task management
+                </p>
+                <Button 
+                  onClick={() => setShowNewProject(true)} 
+                  className="glass-button text-white font-medium"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Your First Project
+                </Button>
+              </div>
+            </motion.div>
+          ) : (
+            filteredProjects.map((project, index) => (
             <motion.div
               key={project.id}
               initial={{ opacity: 0, y: 20 }}
@@ -239,12 +348,27 @@ export function Dashboard() {
                     >
                       <Folder className="w-6 h-6 text-white" />
                     </div>
-                    <Badge variant="secondary" className="bg-white/10 text-white/90 border-white/20">
-                      {project.members} members
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="bg-white/10 text-white/90 border-white/20">
+                        {project.members} members
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteProject(project.id, project.name)
+                        }}
+                        className="h-8 w-8 text-white/60 hover:text-red-400 hover:bg-red-500/10"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <CardTitle className="text-white">{project.name}</CardTitle>
-                  <CardDescription className="text-white/70">{project.description}</CardDescription>
+                  <CardTitle className="text-white text-lg">{project.name}</CardTitle>
+                  <CardDescription className="text-white/70 mt-2 text-sm">
+                    {project.description || "No description provided"}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
@@ -262,25 +386,33 @@ export function Dashboard() {
                         className={`h-2 bg-gradient-to-r ${project.color} rounded-full`}
                       />
                     </div>
+                    {project.due_date && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-white/70">Due Date</span>
+                        <span className="text-white">
+                          {new Date(project.due_date).toLocaleDateString()}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-white/70">Due Date</span>
-                      <span className="text-white">{new Date(project.dueDate).toLocaleDateString()}</span>
+                      <span className="text-white/70">Created</span>
+                      <span className="text-white">
+                        {new Date(project.created_at).toLocaleDateString()}
+                      </span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </motion.div>
-          ))}
+            ))
+          )}
         </motion.div>
       </div>
 
       <NewProjectModal
         open={showNewProject}
         onOpenChange={setShowNewProject}
-        onCreateProject={(project) => {
-          setProjects([...projects, { ...project, id: Date.now().toString() }])
-          setShowNewProject(false)
-        }}
+        onCreateProject={handleCreateProject}
       />
     </div>
   )
