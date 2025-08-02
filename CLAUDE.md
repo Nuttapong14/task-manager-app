@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-TaskFlow is a modern, responsive task management application built with Next.js 14, React 18, and TypeScript. It features a Kanban-style project board with glassmorphism design, real-time collaboration via WebSocket, and comprehensive UI components based on Radix UI.
+TaskFlow (package name: "my-v0-project") is a modern, responsive task management application built with Next.js 14, React 18, and TypeScript. It features a Kanban-style project board with glassmorphism design, real-time collaboration via Supabase, and comprehensive UI components based on Radix UI.
 
 ## Development Commands
 
@@ -26,13 +26,19 @@ Note: The project also supports pnpm and yarn as package managers.
 ### Key Components
 - `dashboard.tsx` - Main dashboard with project overview and statistics
 - `project-board.tsx` - Kanban board implementation with task management
-- `auth-provider.tsx` - Authentication context with mock user management
+- `auth-provider.tsx` - Authentication context with Supabase Auth integration
 - `task-modal.tsx` - Task creation and editing interface
+- `new-project-modal.tsx` - Project creation modal
+- `new-task-modal.tsx` - Task creation modal
+- `login-form.tsx` - User authentication form
+- `theme-provider.tsx` - Dark/light theme management
 
 ### Data Layer
-- **Mock Data**: Currently uses mock data for projects and tasks
-- **Database Schema**: SQL setup scripts in `/scripts/` directory define PostgreSQL schema
-- **Real-time Events**: Centralized event types in `SOCKET_EVENTS` constant
+- **Supabase Integration**: Full Supabase backend with PostgreSQL database
+- **Database Schema**: SQL migrations in `supabase/migrations/` directory
+- **API Layer**: Database operations in `lib/api.ts` with organized entity functions
+- **Real-time Features**: Supabase real-time subscriptions for live updates
+- **Mock Fallback**: Includes mock WebSocket implementation in `lib/socket.ts`
 
 ### UI System
 - **Design**: Glassmorphism theme with purple-pink gradients and dark mode
@@ -41,8 +47,10 @@ Note: The project also supports pnpm and yarn as package managers.
 - **Styling**: Tailwind CSS with custom utility classes
 
 ### Authentication
-- Mock authentication system with role-based access (admin, editor, viewer)
+- Supabase Auth with email/password authentication
+- Role-based access control (admin, editor, viewer) stored in profiles table
 - Protected routes and user context throughout the application
+- Automatic profile creation on user signup via database triggers
 
 ## Supabase Setup
 
@@ -83,3 +91,52 @@ Note: The project also supports pnpm and yarn as package managers.
 - Images are unoptimized for deployment flexibility
 - Database migrations are in `supabase/migrations/` directory
 - Row Level Security policies ensure data privacy and security
+- Project supports npm, pnpm, and yarn package managers
+- Uses Next.js App Router with API routes in `app/api/`
+
+## File Structure Notes
+
+### Key Directories
+- `/app` - Next.js App Router with pages and API routes
+- `/components` - React components (business logic)
+- `/components/ui` - Reusable UI primitives (Radix UI based)
+- `/lib` - Utility libraries and configurations
+- `/supabase/migrations` - Database schema migrations
+- `/public` - Static assets (images, icons)
+- `/scripts` - Database setup and seed scripts (legacy)
+- `/hooks` - Custom React hooks
+- `/styles` - Global CSS styles
+
+### Important Files
+- `lib/supabase.ts` - Supabase client configuration and TypeScript types
+- `lib/api.ts` - Database operation functions organized by entity
+- `lib/auth.ts` - Authentication helper functions
+- `components/auth-provider.tsx` - Authentication context provider
+- `components/theme-provider.tsx` - Theme management context
+- `app/layout.tsx` - Root application layout
+- `app/page.tsx` - Main application entry point
+
+## Technology Stack
+
+### Core Framework
+- **Next.js 14** with App Router
+- **React 18** with TypeScript
+- **Tailwind CSS** for styling
+
+### UI & Components
+- **Radix UI** - Accessible component primitives
+- **Framer Motion** - Animation library
+- **Lucide React** - Icon library
+- **React Hook Form** + **Zod** - Form handling and validation
+
+### Backend & Database
+- **Supabase** - Backend-as-a-Service
+  - PostgreSQL database
+  - Authentication system
+  - Real-time subscriptions
+  - Row Level Security (RLS)
+
+### Development Tools
+- **TypeScript** - Type safety
+- **ESLint** - Code linting
+- **PostCSS** - CSS processing

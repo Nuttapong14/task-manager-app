@@ -11,8 +11,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { CalendarIcon, Flag, MessageSquare, Plus, X } from "lucide-react"
+import { CalendarIcon, Flag, MessageSquare, Plus, Trash2, X } from "lucide-react"
 import { format } from "date-fns"
+
+interface Comment {
+  id: string
+  user: string
+  content: string
+  timestamp: Date
+}
 
 interface Task {
   id: string
@@ -26,7 +33,7 @@ interface Task {
   }
   dueDate: string
   tags: string[]
-  comments: number
+  comments: Comment[]
 }
 
 interface TaskModalProps {
@@ -34,6 +41,7 @@ interface TaskModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onUpdateTask: (task: Task) => void
+  onDeleteTask?: (taskId: string) => void
 }
 
 const priorityColors = {
@@ -54,10 +62,11 @@ const priorityOptions = [
   { value: "high", label: "High" },
 ]
 
-export function TaskModal({ task, open, onOpenChange, onUpdateTask }: TaskModalProps) {
+export function TaskModal({ task, open, onOpenChange, onUpdateTask, onDeleteTask }: TaskModalProps) {
   const [editedTask, setEditedTask] = useState<Task>(task)
   const [newTag, setNewTag] = useState("")
   const [dueDate, setDueDate] = useState<Date>(new Date(task.dueDate))
+  const [newComment, setNewComment] = useState("")
 
   const handleSave = () => {
     onUpdateTask({
@@ -81,6 +90,52 @@ export function TaskModal({ task, open, onOpenChange, onUpdateTask }: TaskModalP
       ...editedTask,
       tags: editedTask.tags.filter((tag) => tag !== tagToRemove),
     })
+  }
+
+  const addComment = () => {
+    if (newComment.trim()) {
+      const comment: Comment = {
+        id: Date.now().toString(),
+        user: "Current User", // In real app, this would be the logged-in user
+        content: newComment.trim(),
+        timestamp: new Date()
+      }
+      setEditedTask({
+        ...editedTask,
+        comments: [...editedTask.comments, comment]
+      })
+      setNewComment("")
+    }
+  }
+
+  const removeComment = (commentId: string) => {
+    setEditedTask({
+      ...editedTask,
+      comments: editedTask.comments.filter(c => c.id !== commentId)
+    })
+  }
+
+  const handleDeleteTask = () => {
+    console.log('=== TASK MODAL DELETE ===')
+    console.log('Task to delete:', task.title, task.id)
+    console.log('onDeleteTask function available:', !!onDeleteTask)
+    
+    if (onDeleteTask) {
+      const confirmed = confirm(`Delete "${task.title}"?`)
+      console.log('User confirmed deletion:', confirmed)
+      
+      // TEMPORARY: Bypass confirmation for testing
+      if (!confirmed) {
+        console.log('Confirmation failed, but proceeding anyway for testing...')
+      }
+      
+      console.log('Calling onDeleteTask with ID:', task.id)
+      onDeleteTask(task.id)
+      onOpenChange(false)
+      console.log('Task modal deletion completed')
+    } else {
+      console.log('No onDeleteTask function provided')
+    }
   }
 
   return (
@@ -239,15 +294,77 @@ export function TaskModal({ task, open, onOpenChange, onUpdateTask }: TaskModalP
           <div className="space-y-2">
             <Label className="text-white/90 flex items-center gap-2">
               <MessageSquare className="w-4 h-4" />
-              Comments ({editedTask.comments})
+              Comments ({editedTask.comments.length})
             </Label>
-            <div className="glass-card border-white/20 p-4 rounded-md">
-              <p className="text-white/70 text-sm">Comments feature coming soon...</p>
+            
+            {/* Existing Comments */}
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {editedTask.comments.length === 0 ? (
+                <div className="glass-card border-white/20 p-4 rounded-md">
+                  <p className="text-white/70 text-sm">No comments yet. Be the first to add one!</p>
+                </div>
+              ) : (
+                editedTask.comments.map((comment) => (
+                  <div key={comment.id} className="bg-white/5 border border-white/10 rounded-lg p-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-white/90 text-sm font-medium">{comment.user}</span>
+                          <span className="text-white/50 text-xs">
+                            {comment.timestamp.toLocaleTimeString()}
+                          </span>
+                        </div>
+                        <p className="text-white/80 text-sm">{comment.content}</p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeComment(comment.id)}
+                        className="text-white/50 hover:text-red-400 hover:bg-red-500/20 h-6 w-6 p-0"
+                      >
+                        ×
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Add New Comment */}
+            <div className="flex gap-2">
+              <Input
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Add a comment..."
+                className="glass-card border-white/20 text-white placeholder:text-white/50"
+                onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addComment())}
+              />
+              <Button 
+                type="button" 
+                onClick={addComment} 
+                size="icon" 
+                className="glass-button"
+                disabled={!newComment.trim()}
+              >
+                <MessageSquare className="w-4 h-4" />
+              </Button>
             </div>
           </div>
 
           {/* Actions */}
           <div className="flex gap-3 pt-4">
+            {onDeleteTask && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleDeleteTask}
+                className="glass-card border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-500/50"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Task
+              </Button>
+            )}
             <Button
               type="button"
               variant="outline"

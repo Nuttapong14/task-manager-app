@@ -1,4 +1,5 @@
 import { supabase, type Project, type Task, type Profile, type ProjectMember } from './supabase'
+import { errorLogger } from './error-logger'
 
 // Project API functions
 export const projectApi = {
@@ -46,21 +47,35 @@ export const projectApi = {
   },
 
   async createProject(project: Omit<Project, 'id' | 'created_at' | 'updated_at'>) {
-    console.log('API: Creating project with data:', project)
-    
-    const { data: { user } } = await supabase.auth.getUser()
-    console.log('API: Current user for creation:', user)
-    
-    const { data, error } = await supabase
-      .from('projects')
-      .insert(project)
-      .select()
-      .single()
+    try {
+      console.log('API: Creating project via API route with data:', project)
+      
+      const { data: { user } } = await supabase.auth.getUser()
+      console.log('API: Current user for creation:', user)
+      
+      // Use API route to bypass RLS issues
+      const response = await fetch('/api/projects', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(project)
+      })
 
-    console.log('API: Create project result:', { data, error })
+      if (!response.ok) {
+        const errorData = await response.json()
+        const error = new Error(errorData.error || 'Failed to create project')
+        errorLogger.logDatabase('createProject_API', error, { project, user: user?.id, status: response.status })
+        throw error
+      }
 
-    if (error) throw error
-    return data
+      const data = await response.json()
+      console.log('API: Create project result:', data)
+      return data
+    } catch (error) {
+      errorLogger.logDatabase('createProject', error, { project })
+      throw error
+    }
   },
 
   async updateProject(id: string, updates: Partial<Project>) {

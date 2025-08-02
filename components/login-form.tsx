@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useAuth } from "@/components/auth-provider"
-import { Mail, Lock, Sparkles } from "lucide-react"
+import { useAuth } from "@/components/simple-auth-provider"
+import { Mail, Lock, Sparkles, User } from "lucide-react"
 
 export function LoginForm() {
   const [email, setEmail] = useState("")
@@ -25,6 +25,26 @@ export function LoginForm() {
     setIsLoading(true)
     setError("")
     
+    // Client-side validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address')
+      setIsLoading(false)
+      return
+    }
+    
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long')
+      setIsLoading(false)
+      return
+    }
+    
+    if (isSignUp && name.trim().length < 2) {
+      setError('Name must be at least 2 characters long')
+      setIsLoading(false)
+      return
+    }
+    
     try {
       if (isSignUp) {
         await signup(email, password, name)
@@ -33,7 +53,22 @@ export function LoginForm() {
       }
     } catch (error: any) {
       console.error("Auth failed:", error)
-      setError(error.message || `${isSignUp ? 'Sign up' : 'Login'} failed`)
+      
+      // More specific error handling
+      let errorMessage = error.message || `${isSignUp ? 'Sign up' : 'Login'} failed`
+      
+      // Handle common Supabase auth errors
+      if (error.message?.includes('Invalid email')) {
+        errorMessage = 'Please enter a valid email address'
+      } else if (error.message?.includes('Email rate limit exceeded')) {
+        errorMessage = 'Too many requests. Please wait before trying again.'
+      } else if (error.message?.includes('Invalid login credentials')) {
+        errorMessage = 'Invalid email or password'
+      } else if (error.message?.includes('User already registered')) {
+        errorMessage = 'This email is already registered. Try signing in instead.'
+      }
+      
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -58,10 +93,31 @@ export function LoginForm() {
               <Sparkles className="w-8 h-8 text-white" />
             </motion.div>
             <CardTitle className="text-2xl font-bold text-white">Welcome to TaskFlow</CardTitle>
-            <CardDescription className="text-white/70">Beautiful collaborative task management</CardDescription>
+            <CardDescription className="text-white/70">
+              {isSignUp ? "Create your account to get started" : "Beautiful collaborative task management"}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {isSignUp && (
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="text-white/90">
+                    Name
+                  </Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 h-4 w-4 text-white/50" />
+                    <Input
+                      id="name"
+                      type="text"
+                      placeholder="Enter your full name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="pl-10 glass-card border-white/20 text-white placeholder:text-white/50"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-white/90">
                   Email
@@ -104,12 +160,34 @@ export function LoginForm() {
                     className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
                   />
                 ) : (
-                  "Sign In"
+                  isSignUp ? "Create Account" : "Sign In"
                 )}
               </Button>
             </form>
-            <div className="mt-6 text-center">
-              <p className="text-white/60 text-sm">Demo credentials: any email/password</p>
+            {error && (
+              <div className="mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
+                <p className="text-red-200 text-sm">{error}</p>
+              </div>
+            )}
+            <div className="mt-6 text-center space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSignUp(!isSignUp)
+                  setError("")
+                  setEmail("")
+                  setPassword("")
+                  setName("")
+                }}
+                className="text-white/60 text-sm hover:text-white/80 transition-colors"
+              >
+                {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
+              </button>
+              {!isSignUp ? (
+                <p className="text-white/60 text-sm">Demo credentials: any email/password</p>
+              ) : (
+                <p className="text-white/60 text-sm">Use a real email like: user@outlook.com</p>
+              )}
             </div>
           </CardContent>
         </Card>

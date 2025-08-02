@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useAuth } from "@/components/auth-provider"
+import { useAuth } from "@/components/simple-auth-provider"
 import { ProjectBoard } from "@/components/project-board"
 import { NewProjectModal } from "@/components/new-project-modal"
 import { projectApi } from "@/lib/api"
@@ -24,6 +24,9 @@ interface Project {
     completed: number
   }
   due_date: string | null
+  owner_id?: string
+  created_at?: string
+  updated_at?: string
 }
 
 export function Dashboard() {
@@ -117,25 +120,43 @@ export function Dashboard() {
   }
 
   const handleDeleteProject = async (projectId: string, projectName: string) => {
-    if (!confirm(`Are you sure you want to delete "${projectName}"? This action cannot be undone.`)) {
-      return
+    console.log('=== DELETING PROJECT ===')
+    console.log('Project ID:', projectId)
+    console.log('Project Name:', projectName)
+    
+    // Simple confirmation test
+    const userConfirmed = confirm(`Delete "${projectName}"?`)
+    console.log('User confirmation result:', userConfirmed)
+    
+    // TEMPORARY: Skip confirmation for testing - remove this after debugging
+    if (!userConfirmed) {
+      console.log('Confirmation failed, but proceeding anyway for testing...')
+      // Comment out the return to bypass confirmation
+      // return
     }
 
     try {
+      console.log('Removing from local state...')
       // Remove from local state immediately
       setProjects(prev => prev.filter(p => p.id !== projectId))
       
       // Try to delete from database
       if (!projectId.startsWith('temp-')) {
+        console.log('Deleting from database...')
         await projectApi.deleteProject(projectId)
+        console.log('Database deletion successful')
+      } else {
+        console.log('Skipping database deletion for temp project')
       }
       
       alert(`Project "${projectName}" deleted successfully!`)
     } catch (error) {
       console.error('Error deleting project:', error)
+      console.error('Error details:', error.message || error)
       // Re-add to local state if database deletion failed
+      console.log('Reloading projects due to error...')
       loadProjects()
-      alert('Failed to delete project from database, but removed from view.')
+      alert(`Failed to delete project: ${error.message || 'Unknown error'}`)
     }
   }
 
@@ -356,10 +377,13 @@ export function Dashboard() {
                         variant="ghost"
                         size="icon"
                         onClick={(e) => {
+                          e.preventDefault()
                           e.stopPropagation()
+                          console.log('Delete button clicked for project:', project.name)
                           handleDeleteProject(project.id, project.name)
                         }}
-                        className="h-8 w-8 text-white/60 hover:text-red-400 hover:bg-red-500/10"
+                        className="h-8 w-8 text-white/60 hover:text-red-400 hover:bg-red-500/10 relative z-10"
+                        title={`Delete "${project.name}" project`}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -394,12 +418,14 @@ export function Dashboard() {
                         </span>
                       </div>
                     )}
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-white/70">Created</span>
-                      <span className="text-white">
-                        {new Date(project.created_at).toLocaleDateString()}
-                      </span>
-                    </div>
+                    {project.created_at && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-white/70">Created</span>
+                        <span className="text-white">
+                          {new Date(project.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

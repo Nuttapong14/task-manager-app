@@ -147,9 +147,10 @@ CREATE POLICY "Users can create projects" ON public.projects FOR INSERT WITH CHE
 CREATE POLICY "Project owners can update their projects" ON public.projects FOR UPDATE USING (auth.uid() = owner_id);
 CREATE POLICY "Project owners can delete their projects" ON public.projects FOR DELETE USING (auth.uid() = owner_id);
 
--- Project members: Users can view members of projects they're part of
+-- Project members: Users can view members of projects they own or are members of
 CREATE POLICY "Users can view project members" ON public.project_members FOR SELECT USING (
-    EXISTS (SELECT 1 FROM public.projects WHERE id = project_id AND (owner_id = auth.uid() OR EXISTS (SELECT 1 FROM public.project_members pm WHERE pm.project_id = id AND pm.user_id = auth.uid())))
+    EXISTS (SELECT 1 FROM public.projects WHERE id = project_id AND owner_id = auth.uid()) OR
+    user_id = auth.uid()
 );
 CREATE POLICY "Project owners can manage members" ON public.project_members FOR ALL USING (
     EXISTS (SELECT 1 FROM public.projects WHERE id = project_id AND owner_id = auth.uid())

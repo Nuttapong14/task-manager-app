@@ -1,6 +1,6 @@
 "use client"
 
-import { useAuth } from "@/components/auth-provider"
+import { useAuth } from "@/components/simple-auth-provider"
 import { LoginForm } from "@/components/login-form"
 import { Dashboard } from "@/components/dashboard"
 import { motion } from "framer-motion"

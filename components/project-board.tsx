@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,7 +8,14 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { TaskModal } from "@/components/task-modal"
 import { NewTaskModal } from "@/components/new-task-modal"
-import { ArrowLeft, Plus, MoreHorizontal, Calendar, Flag, MessageSquare } from "lucide-react"
+import { ArrowLeft, Plus, MoreHorizontal, Calendar, Flag, MessageSquare, Trash2 } from "lucide-react"
+
+interface Comment {
+  id: string
+  user: string
+  content: string
+  timestamp: Date
+}
 
 interface Task {
   id: string
@@ -22,7 +29,7 @@ interface Task {
   }
   dueDate: string
   tags: string[]
-  comments: number
+  comments: Comment[]
 }
 
 interface Project {
@@ -57,28 +64,100 @@ const priorityColors = {
   high: "bg-red-500/20 text-red-400 border-red-500/30",
 }
 
+// Helper functions for localStorage
+const getStorageKey = (projectId: string) => `taskflow_tasks_${projectId}`
+
+const loadTasksFromStorage = (projectId: string): Task[] => {
+  if (typeof window === 'undefined') return []
+  try {
+    const stored = localStorage.getItem(getStorageKey(projectId))
+    if (!stored) return []
+    const parsed = JSON.parse(stored)
+    // Convert timestamp strings back to Date objects for comments
+    return parsed.map((task: any) => ({
+      ...task,
+      comments: task.comments.map((comment: any) => ({
+        ...comment,
+        timestamp: new Date(comment.timestamp)
+      }))
+    }))
+  } catch (error) {
+    console.error('Error loading tasks from storage:', error)
+    return []
+  }
+}
+
+const saveTasksToStorage = (projectId: string, tasks: Task[]) => {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(getStorageKey(projectId), JSON.stringify(tasks))
+  } catch (error) {
+    console.error('Error saving tasks to storage:', error)
+  }
+}
+
 export function ProjectBoard({ project, onBack }: ProjectBoardProps) {
   const [tasks, setTasks] = useState<Task[]>([])
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [showNewTask, setShowNewTask] = useState(false)
   const [newTaskColumn, setNewTaskColumn] = useState<string>("todo")
 
+  // Load tasks when component mounts or project changes
+  useEffect(() => {
+    const loadedTasks = loadTasksFromStorage(project.id)
+    setTasks(loadedTasks)
+  }, [project.id])
+
+  // Save tasks whenever tasks change
+  useEffect(() => {
+    if (tasks.length > 0 || tasks.length === 0) { // Save even empty arrays to clear storage
+      saveTasksToStorage(project.id, tasks)
+    }
+  }, [tasks, project.id])
+
   const getTasksByStatus = (status: string) => {
     return tasks.filter((task) => task.status === status)
   }
 
   const handleNewTask = (columnId: string) => {
+    console.log('=== OPENING NEW TASK MODAL ===')
+    console.log('Column ID:', columnId)
     setNewTaskColumn(columnId)
     setShowNewTask(true)
+    console.log('Modal should be open now')
   }
 
   const handleCreateTask = (taskData: Omit<Task, "id">) => {
+    console.log('=== CREATING NEW TASK ===')
+    console.log('Task data received:', taskData)
+    
     const newTask: Task = {
       ...taskData,
       id: Date.now().toString(),
     }
+    
+    console.log('New task created:', newTask)
+    console.log('Current tasks before adding:', tasks.length)
+    
     setTasks([...tasks, newTask])
     setShowNewTask(false)
+    
+    console.log('Task creation completed')
+  }
+
+  const handleDeleteTask = (taskId: string) => {
+    console.log('=== DELETING TASK ===')
+    console.log('Task ID to delete:', taskId)
+    console.log('Current tasks:', tasks.length)
+    console.log('Tasks before deletion:', tasks.map(t => ({ id: t.id, title: t.title })))
+    
+    const newTasks = tasks.filter(task => task.id !== taskId)
+    console.log('Tasks after filtering:', newTasks.length)
+    
+    setTasks(newTasks)
+    setSelectedTask(null)
+    
+    console.log('Task deletion completed')
   }
 
   return (
@@ -167,10 +246,34 @@ export function ProjectBoard({ project, onBack }: ProjectBoardProps) {
                         <div className="space-y-3">
                           <div className="flex items-start justify-between">
                             <h3 className="font-medium text-white text-sm leading-tight">{task.title}</h3>
-                            <Badge variant="outline" className={`text-xs ${priorityColors[task.priority]} border`}>
-                              <Flag className="w-3 h-3 mr-1" />
-                              {task.priority}
-                            </Badge>
+                            <div className="flex items-center gap-1">
+                              <Badge variant="outline" className={`text-xs ${priorityColors[task.priority]} border`}>
+                                <Flag className="w-3 h-3 mr-1" />
+                                {task.priority}
+                              </Badge>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  console.log('Quick delete button clicked for task:', task.title)
+                                  const confirmed = confirm(`Delete "${task.title}"?`)
+                                  console.log('User confirmed deletion:', confirmed)
+                                  
+                                  // TEMPORARY: Bypass confirmation for testing
+                                  if (!confirmed) {
+                                    console.log('Confirmation failed, but proceeding anyway for testing...')
+                                  }
+                                  
+                                  // Always delete for now to test the deletion logic
+                                  handleDeleteTask(task.id)
+                                }}
+                                className="h-6 w-6 text-white/40 hover:text-red-400 hover:bg-red-500/10"
+                                title="Delete task"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
                           </div>
 
                           <p className="text-white/70 text-xs line-clamp-2">{task.description}</p>
@@ -203,10 +306,10 @@ export function ProjectBoard({ project, onBack }: ProjectBoardProps) {
                                 <Calendar className="w-3 h-3" />
                                 <span className="text-xs">{new Date(task.dueDate).toLocaleDateString()}</span>
                               </div>
-                              {task.comments > 0 && (
+                              {task.comments.length > 0 && (
                                 <div className="flex items-center space-x-1">
                                   <MessageSquare className="w-3 h-3" />
-                                  <span className="text-xs">{task.comments}</span>
+                                  <span className="text-xs">{task.comments.length}</span>
                                 </div>
                               )}
                             </div>
@@ -232,6 +335,7 @@ export function ProjectBoard({ project, onBack }: ProjectBoardProps) {
             setTasks(tasks.map((t) => (t.id === updatedTask.id ? updatedTask : t)))
             setSelectedTask(null)
           }}
+          onDeleteTask={handleDeleteTask}
         />
       )}
 

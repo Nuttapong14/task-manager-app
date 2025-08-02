@@ -54,18 +54,73 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const setUserFromSession = async (supabaseUser: SupabaseUser) => {
     try {
+      console.log('Setting user from session:', supabaseUser.id)
+      
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', supabaseUser.id)
         .single()
 
+      console.log('Profile fetch result:', { profile, error })
+
       if (error) {
-        console.error('Error fetching profile:', error)
+        if (error.code === 'PGRST116') {
+          // Profile doesn't exist, create it
+          console.log('Profile not found, creating new profile')
+          const userName = supabaseUser.user_metadata?.name || 
+                          supabaseUser.email?.split('@')[0] || 
+                          'User'
+          
+          const { data: newProfile, error: insertError } = await supabase
+            .from('profiles')
+            .insert({
+              id: supabaseUser.id,
+              email: supabaseUser.email!,
+              name: userName,
+              role: 'editor'
+            })
+            .select()
+            .single()
+
+          console.log('Profile creation result:', { newProfile, insertError })
+
+          if (insertError) {
+            console.error('Error creating profile:', insertError)
+            // FALLBACK: Create a minimal user object from supabase user data
+            setUser({
+              id: supabaseUser.id,
+              name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
+              email: supabaseUser.email!,
+              role: 'editor'
+            })
+            return
+          }
+
+          if (newProfile) {
+            setUser({
+              id: newProfile.id,
+              name: newProfile.name,
+              email: newProfile.email,
+              avatar: newProfile.avatar_url || undefined,
+              role: newProfile.role
+            })
+          }
+        } else {
+          console.error('Error fetching profile:', error)
+          // FALLBACK: Create a minimal user object from supabase user data
+          setUser({
+            id: supabaseUser.id,
+            name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
+            email: supabaseUser.email!,
+            role: 'editor'
+          })
+        }
         return
       }
 
       if (profile) {
+        console.log('Setting user from profile:', profile)
         setUser({
           id: profile.id,
           name: profile.name,
@@ -76,6 +131,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error('Error setting user from session:', error)
+      // FALLBACK: Create a minimal user object from supabase user data
+      setUser({
+        id: supabaseUser.id,
+        name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
+        email: supabaseUser.email!,
+        role: 'editor'
+      })
     }
   }
 
@@ -88,7 +150,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signup = async (email: string, password: string, name: string) => {
-    const { error } = await supabase.auth.signUp({
+    console.log('Attempting signup with:', { email, passwordLength: password.length, name })
+    
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -97,7 +161,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
     })
-    if (error) throw error
+    
+    console.log('Supabase signup response:', { data, error })
+    
+    if (error) {
+      console.error('Supabase signup error details:', {
+        message: error.message,
+        status: error.status,
+        name: error.name
+      })
+      throw error
+    }
+    
+    // Check if email confirmation is required
+    if (data?.user && !data.session) {
+      console.log('User created but no session - email confirmation required')
+      throw new Error('Please check your email and click the confirmation link to complete registration.')
+    }
+    
+    console.log('Signup successful:', data?.user?.id)
   }
 
   const logout = async () => {
