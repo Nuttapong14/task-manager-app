@@ -93,7 +93,10 @@ export async function GET(request: NextRequest) {
 
     let query = supabaseAdmin
       .from('projects')
-      .select('*')
+      .select(`
+        *,
+        tasks(id, status)
+      `)
       .order('created_at', { ascending: false })
 
     // If userId is provided, filter by owner_id
@@ -117,15 +120,21 @@ export async function GET(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Transform data to match existing interface with default values
-    const transformedData = data?.map(project => ({
-      ...project,
-      members: 1, // Default to 1 (owner)
-      tasks: {
-        total: 0,
-        completed: 0
+    // Transform data to match existing interface with real task statistics
+    const transformedData = data?.map(project => {
+      const tasks = project.tasks || []
+      const totalTasks = tasks.length
+      const completedTasks = tasks.filter(task => task.status === 'done').length
+      
+      return {
+        ...project,
+        members: 1, // Default to 1 (owner)
+        tasks: {
+          total: totalTasks,
+          completed: completedTasks
+        }
       }
-    })) || []
+    }) || []
 
     return NextResponse.json(transformedData)
   } catch (error) {

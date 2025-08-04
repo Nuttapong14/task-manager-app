@@ -18,6 +18,10 @@ export type Database = {
           role: 'admin' | 'editor' | 'viewer'
           created_at: string
           updated_at: string
+          bio: string | null
+          location: string | null
+          website: string | null
+          phone: string | null
         }
         Insert: {
           id: string
@@ -27,6 +31,10 @@ export type Database = {
           role?: 'admin' | 'editor' | 'viewer'
           created_at?: string
           updated_at?: string
+          bio?: string | null
+          location?: string | null
+          website?: string | null
+          phone?: string | null
         }
         Update: {
           id?: string
@@ -36,6 +44,10 @@ export type Database = {
           role?: 'admin' | 'editor' | 'viewer'
           created_at?: string
           updated_at?: string
+          bio?: string | null
+          location?: string | null
+          website?: string | null
+          phone?: string | null
         }
       }
       projects: {

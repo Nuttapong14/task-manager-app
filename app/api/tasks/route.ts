@@ -56,8 +56,7 @@ export async function GET(request: NextRequest) {
         *,
         assignee:profiles!tasks_assignee_id_fkey(id, name, avatar_url),
         created_by_profile:profiles!tasks_created_by_fkey(id, name),
-        task_tags(tag),
-        comments(count)
+        task_tags(tag)
       `)
       .eq('project_id', projectId)
       .order('created_at', { ascending: false })
@@ -77,7 +76,7 @@ export async function GET(request: NextRequest) {
     const transformedData = data?.map(task => ({
       ...task,
       tags: task.task_tags?.map(t => t.tag) || [],
-      comments: task.comments?.[0]?.count || 0,
+      comments: 0, // For now, set to 0. We can implement proper comment counting later
       assignee: task.assignee ? {
         id: task.assignee.id,
         name: task.assignee.name,

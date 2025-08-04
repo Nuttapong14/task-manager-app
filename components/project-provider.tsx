@@ -40,73 +40,6 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false)
   const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null)
 
-  // Load projects whenever user changes or page loads
-  useEffect(() => {
-    if (user) {
-      loadProjects()
-    } else {
-      setProjects([])
-    }
-  }, [user])
-
-  // Real-time subscriptions for instant updates
-  useEffect(() => {
-    if (!user) return
-
-    console.log('🔴 ProjectProvider: Setting up real-time subscription for user:', user.id)
-    
-    const subscription = supabase
-      .channel('projects_realtime')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'projects',
-        filter: `owner_id=eq.${user.id}`
-      }, (payload) => {
-        console.log('⚡ ProjectProvider: Real-time change detected:', payload.eventType, payload.new?.name || payload.old?.name)
-        
-        // Handle different events
-        if (payload.eventType === 'INSERT' && payload.new) {
-          const newProject = {
-            ...payload.new,
-            members: 1,
-            tasks: { total: 0, completed: 0 }
-          }
-          addProject(newProject)
-        } else if (payload.eventType === 'UPDATE' && payload.new) {
-          const updatedProject = {
-            ...payload.new,
-            members: 1,
-            tasks: { total: 0, completed: 0 }
-          }
-          updateProject(payload.new.id, updatedProject)
-        } else if (payload.eventType === 'DELETE' && payload.old) {
-          removeProject(payload.old.id)
-        }
-      })
-      .subscribe((status) => {
-        console.log('📡 ProjectProvider: Subscription status:', status)
-      })
-
-    return () => {
-      console.log('🔴 ProjectProvider: Cleaning up real-time subscription')
-      subscription.unsubscribe()
-    }
-  }, [user])
-
-  // Route change handler (kept for manual navigation)
-  useEffect(() => {
-    const handleRouteChange = () => {
-      if (user) {
-        console.log('🔄 ProjectProvider: Route change detected, refreshing projects')
-        loadProjects()
-      }
-    }
-
-    window.addEventListener('project-route-change', handleRouteChange)
-    return () => window.removeEventListener('project-route-change', handleRouteChange)
-  }, [user])
-
   const loadProjects = useCallback(async () => {
     if (!user) {
       console.log('🔴 ProjectProvider: No user, skipping project load')
@@ -129,6 +62,99 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       console.log('🏁 ProjectProvider: Load operation completed')
     }
   }, [user])
+
+  // Load projects whenever user changes or page loads
+  useEffect(() => {
+    if (user) {
+      loadProjects()
+    } else {
+      setProjects([])
+    }
+  }, [user, loadProjects])
+
+  // Real-time subscriptions for instant updates
+  useEffect(() => {
+    if (!user) return
+
+    console.log('🔴 ProjectProvider: Setting up real-time subscriptions for user:', user.id)
+    
+    // Project changes subscription
+    const projectsSubscription = supabase
+      .channel('projects_realtime')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'projects',
+        filter: `owner_id=eq.${user.id}`
+      }, (payload) => {
+        console.log('⚡ ProjectProvider: Project change detected:', payload.eventType, payload.new?.name || payload.old?.name)
+        
+        // Handle different events
+        if (payload.eventType === 'INSERT' && payload.new) {
+          const newProject = {
+            ...payload.new,
+            members: 1,
+            tasks: { total: 0, completed: 0 }
+          }
+          addProject(newProject)
+        } else if (payload.eventType === 'UPDATE' && payload.new) {
+          const updatedProject = {
+            ...payload.new,
+            members: 1,
+            tasks: { total: 0, completed: 0 }
+          }
+          updateProject(payload.new.id, updatedProject)
+        } else if (payload.eventType === 'DELETE' && payload.old) {
+          removeProject(payload.old.id)
+        }
+      })
+      .subscribe((status) => {
+        console.log('📡 ProjectProvider: Projects subscription status:', status)
+      })
+
+    // Task changes subscription to update progress
+    const tasksSubscription = supabase
+      .channel('tasks_realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'tasks'
+      }, async (payload) => {
+        console.log('⚡ ProjectProvider: Task change detected:', payload.eventType, payload.new?.title || payload.old?.title)
+        
+        // When tasks change, refresh projects to get updated statistics
+        const projectId = payload.new?.project_id || payload.old?.project_id
+        if (projectId) {
+          console.log('🔄 ProjectProvider: Refreshing projects due to task change in project:', projectId)
+          // Refresh after a short delay to allow DB to settle
+          setTimeout(() => {
+            loadProjects()
+          }, 500)
+        }
+      })
+      .subscribe((status) => {
+        console.log('📡 ProjectProvider: Tasks subscription status:', status)
+      })
+
+    return () => {
+      console.log('🔴 ProjectProvider: Cleaning up real-time subscriptions')
+      projectsSubscription.unsubscribe()
+      tasksSubscription.unsubscribe()
+    }
+  }, [user, loadProjects])
+
+  // Route change handler (kept for manual navigation)
+  useEffect(() => {
+    const handleRouteChange = () => {
+      if (user) {
+        console.log('🔄 ProjectProvider: Route change detected, refreshing projects')
+        loadProjects()
+      }
+    }
+
+    window.addEventListener('project-route-change', handleRouteChange)
+    return () => window.removeEventListener('project-route-change', handleRouteChange)
+  }, [user, loadProjects])
 
   const refreshProjects = async () => {
     await loadProjects()

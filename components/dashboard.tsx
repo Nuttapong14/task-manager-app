@@ -10,9 +10,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAuth } from "@/components/simple-auth-provider"
 import { ProjectBoard } from "@/components/project-board"
 import { NewProjectModal } from "@/components/new-project-modal"
+import { EditProject } from "@/components/edit-project"
 import { useProjects } from "@/components/project-provider"
 import { projectApi } from "@/lib/api"
-import { Plus, Search, Bell, Settings, LogOut, Users, Calendar, BarChart3, Folder, Trash2, MoreVertical } from "lucide-react"
+import { Plus, Search, Bell, Settings, LogOut, Users, Calendar, BarChart3, Folder, Trash2, Edit3, MoreVertical, User } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import Link from "next/link"
 
 interface Project {
   id: string
@@ -32,7 +35,7 @@ interface Project {
 
 export function Dashboard() {
   const { user, logout } = useAuth()
-  const { projects, isLoading, addProject, removeProject } = useProjects()
+  const { projects, isLoading, addProject, removeProject, updateProject } = useProjects()
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [showNewProject, setShowNewProject] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -146,7 +149,16 @@ export function Dashboard() {
   )
 
   if (selectedProject) {
-    return <ProjectBoard project={selectedProject} onBack={() => setSelectedProject(null)} />
+    return (
+      <ProjectBoard 
+        project={selectedProject} 
+        onBack={() => setSelectedProject(null)} 
+        onUpdateProject={(updatedProject) => {
+          updateProject(updatedProject.id, updatedProject)
+          setSelectedProject(updatedProject)
+        }}
+      />
+    )
   }
 
   return (
@@ -173,16 +185,36 @@ export function Dashboard() {
               <Button variant="ghost" size="icon" className="text-white/70 hover:text-white">
                 <Settings className="w-5 h-5" />
               </Button>
-              <div className="flex items-center space-x-2">
-                <Avatar className="w-8 h-8">
-                  <AvatarImage src={user?.avatar || "/placeholder.svg"} />
-                  <AvatarFallback className="bg-purple-500 text-white text-sm">{user?.name?.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <span className="text-white/90 text-sm font-medium">{user?.name}</span>
-              </div>
-              <Button variant="ghost" size="icon" onClick={logout} className="text-white/70 hover:text-white">
-                <LogOut className="w-5 h-5" />
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="flex items-center space-x-2 text-white/90 hover:text-white hover:bg-white/10">
+                    <Avatar className="w-8 h-8">
+                      <AvatarImage src={user?.avatar || "/placeholder.svg"} />
+                      <AvatarFallback className="bg-purple-500 text-white text-sm">{user?.name?.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm font-medium">{user?.name}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard/profile" className="flex items-center">
+                      <User className="w-4 h-4 mr-2" />
+                      Profile Settings
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard/preferences" className="flex items-center">
+                      <Settings className="w-4 h-4 mr-2" />
+                      Preferences
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={logout} className="text-red-600">
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
@@ -352,6 +384,14 @@ export function Dashboard() {
                       <Badge variant="secondary" className="bg-white/10 text-white/90 border-white/20">
                         {project.members} members
                       </Badge>
+                      <div onClick={(e) => e.stopPropagation()} className="relative z-10">
+                        <EditProject 
+                          project={project} 
+                          onUpdate={(updatedProject) => {
+                            updateProject(updatedProject.id, updatedProject)
+                          }}
+                        />
+                      </div>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -377,18 +417,86 @@ export function Dashboard() {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-white/70">Progress</span>
-                      <span className="text-white">
-                        {project.tasks.completed}/{project.tasks.total} tasks
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <motion.span 
+                          className="text-white font-medium"
+                          key={`${project.id}-${project.tasks.completed}-${project.tasks.total}`}
+                          initial={{ scale: 1 }}
+                          animate={{ scale: [1, 1.1, 1] }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          {project.tasks.completed}/{project.tasks.total} tasks
+                          {project.tasks.total > 0 && (
+                            <span className="ml-2 text-xs text-white/60">
+                              ({Math.round((project.tasks.completed / project.tasks.total) * 100)}%)
+                            </span>
+                          )}
+                        </motion.span>
+                        
+                        {/* Completion badge */}
+                        {project.tasks.completed === project.tasks.total && project.tasks.total > 0 && (
+                          <motion.div
+                            initial={{ scale: 0, rotate: -180 }}
+                            animate={{ scale: 1, rotate: 0 }}
+                            transition={{ type: "spring", bounce: 0.5, duration: 0.6 }}
+                            className="text-green-400"
+                          >
+                            ✨
+                          </motion.div>
+                        )}
+                      </div>
                     </div>
-                    <div className="w-full bg-white/10 rounded-full h-2">
+                    <motion.div 
+                      className="w-full bg-white/10 rounded-full h-2 overflow-hidden"
+                      key={`progress-${project.id}-${project.tasks.completed}`}
+                      initial={{ scale: 1 }}
+                      animate={{ scale: [1, 1.02, 1] }}
+                      transition={{ duration: 0.5 }}
+                    >
                       <motion.div
                         initial={{ width: 0 }}
-                        animate={{ width: `${(project.tasks.completed / project.tasks.total) * 100}%` }}
-                        transition={{ delay: 0.5 + index * 0.1, duration: 0.8 }}
-                        className={`h-2 bg-gradient-to-r ${project.color} rounded-full`}
-                      />
-                    </div>
+                        animate={{ 
+                          width: project.tasks.total > 0 
+                            ? `${Math.round((project.tasks.completed / project.tasks.total) * 100)}%` 
+                            : '0%'
+                        }}
+                        transition={{ 
+                          delay: 0.2 + index * 0.05, 
+                          duration: 1.2,
+                          ease: "easeOut"
+                        }}
+                        className={`h-2 bg-gradient-to-r ${project.color} rounded-full relative shadow-sm`}
+                      >
+                        {/* Subtle shimmer effect for completed progress */}
+                        {project.tasks.completed > 0 && (
+                          <motion.div
+                            initial={{ x: '-100%' }}
+                            animate={{ x: '100%' }}
+                            transition={{
+                              repeat: Infinity,
+                              duration: 3,
+                              ease: "easeInOut",
+                              delay: 2 + index * 0.2
+                            }}
+                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                          />
+                        )}
+                        
+                        {/* Completion glow effect */}
+                        {project.tasks.completed === project.tasks.total && project.tasks.total > 0 && (
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: [0, 0.6, 0] }}
+                            transition={{
+                              repeat: Infinity,
+                              duration: 2,
+                              ease: "easeInOut"
+                            }}
+                            className="absolute inset-0 bg-white/40 rounded-full blur-sm"
+                          />
+                        )}
+                      </motion.div>
+                    </motion.div>
                     {project.due_date && (
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-white/70">Due Date</span>
