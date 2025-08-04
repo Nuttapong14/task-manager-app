@@ -17,19 +17,21 @@ A modern, responsive task management application built with Next.js 14, React 18
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - npm, pnpm, or yarn
 - Supabase account (for database and authentication)
 
 ### Installation
 
 1. Clone the repository:
+
    ```bash
-   git clone https://github.com/nuttapong/task-manager-app.git
+   git clone https://github.com/Nuttapong14/task-manager-app.git
    cd task-manager-app
    ```
 
 2. Install dependencies:
+
    ```bash
    npm install
    # or
@@ -39,11 +41,13 @@ A modern, responsive task management application built with Next.js 14, React 18
    ```
 
 3. Set up environment variables:
+
    ```bash
    cp .env.local.example .env.local
    ```
-   
+
    Fill in your Supabase credentials in `.env.local`:
+
    ```
    NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
@@ -51,11 +55,13 @@ A modern, responsive task management application built with Next.js 14, React 18
    ```
 
 4. Set up the database:
+
    ```bash
    npx supabase db push
    ```
 
 5. Start the development server:
+
    ```bash
    npm run dev
    ```
@@ -72,6 +78,7 @@ A modern, responsive task management application built with Next.js 14, React 18
 ## 🏗️ Tech Stack
 
 ### Frontend
+
 - **Next.js 14** - React framework with App Router
 - **React 18** - UI library
 - **TypeScript** - Type safety
@@ -80,6 +87,7 @@ A modern, responsive task management application built with Next.js 14, React 18
 - **Radix UI** - Accessible component primitives
 
 ### Backend & Database
+
 - **Supabase** - Backend-as-a-Service
   - PostgreSQL database
   - Real-time subscriptions
@@ -87,6 +95,7 @@ A modern, responsive task management application built with Next.js 14, React 18
   - Row Level Security (RLS)
 
 ### UI Components
+
 - **Radix UI** - Accessible, unstyled components
 - **Lucide React** - Beautiful icons
 - **React Hook Form** - Form management
@@ -157,14 +166,14 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🔗 Demo
 
-Visit the live demo: [TaskFlow App](https://task-manager-app-demo.vercel.app) *(Update with your actual deployment URL)*
+Visit the live demo: [TaskFlow App](https://task-manager-app-demo.vercel.app) _(Update with your actual deployment URL)_
 
 ## 📊 Screenshots
 
 ![TaskFlow Dashboard](./public/screenshot-dashboard.png)
 ![Kanban Board](./public/screenshot-kanban.png)
 
-*Add screenshots to showcase your application*
+_Add screenshots to showcase your application_
 
 ## 🙏 Acknowledgments
 

@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAuth } from "@/components/simple-auth-provider"
 import { ProjectBoard } from "@/components/project-board"
 import { NewProjectModal } from "@/components/new-project-modal"
+import { useProjects } from "@/components/project-provider"
 import { projectApi } from "@/lib/api"
 import { Plus, Search, Bell, Settings, LogOut, Users, Calendar, BarChart3, Folder, Trash2, MoreVertical } from "lucide-react"
 
@@ -31,31 +32,12 @@ interface Project {
 
 export function Dashboard() {
   const { user, logout } = useAuth()
-  const [projects, setProjects] = useState<Project[]>([])
+  const { projects, isLoading, addProject, removeProject } = useProjects()
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [showNewProject, setShowNewProject] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
-  const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
-    if (user) {
-      loadProjects()
-    }
-  }, [user])
-
-  const loadProjects = async () => {
-    try {
-      setIsLoading(true)
-      console.log('Loading projects...')
-      const data = await projectApi.getProjects()
-      console.log('Projects loaded:', data)
-      setProjects(data)
-    } catch (error) {
-      console.error('Error loading projects:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  // Projects are now automatically loaded by the ProjectProvider
 
   const handleCreateProject = async (projectData: {
     name: string
@@ -86,8 +68,8 @@ export function Dashboard() {
       updated_at: new Date().toISOString()
     }
 
-    // Add to local state immediately
-    setProjects(prev => [newProject, ...prev])
+    // Add to global state immediately
+    addProject(newProject)
     setShowNewProject(false)
     
     // Show success message
@@ -109,9 +91,8 @@ export function Dashboard() {
       
       // Update with real ID if successful
       if (result) {
-        setProjects(prev => prev.map(p => 
-          p.id === newProject.id ? { ...newProject, id: result.id } : p
-        ))
+        removeProject(newProject.id)
+        addProject({ ...newProject, id: result.id })
       }
     } catch (error) {
       console.error('Database save failed:', error)
@@ -136,9 +117,9 @@ export function Dashboard() {
     }
 
     try {
-      console.log('Removing from local state...')
-      // Remove from local state immediately
-      setProjects(prev => prev.filter(p => p.id !== projectId))
+      console.log('Removing from global state...')
+      // Remove from global state immediately
+      removeProject(projectId)
       
       // Try to delete from database
       if (!projectId.startsWith('temp-')) {
@@ -153,9 +134,7 @@ export function Dashboard() {
     } catch (error) {
       console.error('Error deleting project:', error)
       console.error('Error details:', error.message || error)
-      // Re-add to local state if database deletion failed
-      console.log('Reloading projects due to error...')
-      loadProjects()
+      // Note: Projects will be reloaded automatically by ProjectProvider on next page visit
       alert(`Failed to delete project: ${error.message || 'Unknown error'}`)
     }
   }

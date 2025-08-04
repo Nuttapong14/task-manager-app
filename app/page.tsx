@@ -3,10 +3,14 @@
 import { useAuth } from "@/components/simple-auth-provider"
 import { LoginForm } from "@/components/login-form"
 import { Dashboard } from "@/components/dashboard"
+import { useNavigationRefresh } from "@/hooks/use-navigation-refresh"
 import { motion } from "framer-motion"
 
 export default function Home() {
   const { user, isLoading } = useAuth()
+  
+  // Trigger project refresh on navigation
+  useNavigationRefresh()
 
   if (isLoading) {
     return (

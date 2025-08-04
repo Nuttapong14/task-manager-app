@@ -27,13 +27,20 @@ interface Task {
   description: string
   status: "todo" | "in-progress" | "done"
   priority: "low" | "medium" | "high"
-  assignee: {
+  project_id: string
+  assignee_id?: string
+  created_by?: string
+  due_date?: string
+  completed_at?: string
+  created_at?: string
+  updated_at?: string
+  tags?: string[]
+  comments?: number
+  assignee?: {
+    id: string
     name: string
-    avatar: string
-  }
-  dueDate: string
-  tags: string[]
-  comments: Comment[]
+    avatar?: string
+  } | null
 }
 
 interface TaskModalProps {
@@ -65,30 +72,35 @@ const priorityOptions = [
 export function TaskModal({ task, open, onOpenChange, onUpdateTask, onDeleteTask }: TaskModalProps) {
   const [editedTask, setEditedTask] = useState<Task>(task)
   const [newTag, setNewTag] = useState("")
-  const [dueDate, setDueDate] = useState<Date>(new Date(task.dueDate))
+  const [dueDate, setDueDate] = useState<Date | undefined>(
+    task.due_date ? new Date(task.due_date) : undefined
+  )
   const [newComment, setNewComment] = useState("")
+  const [localComments, setLocalComments] = useState<Comment[]>([]) // Local comments array
 
   const handleSave = () => {
     onUpdateTask({
       ...editedTask,
-      dueDate: dueDate.toISOString().split("T")[0],
+      due_date: dueDate ? dueDate.toISOString().split("T")[0] : null,
     })
   }
 
   const addTag = () => {
-    if (newTag.trim() && !editedTask.tags.includes(newTag.trim())) {
+    const currentTags = editedTask.tags || []
+    if (newTag.trim() && !currentTags.includes(newTag.trim())) {
       setEditedTask({
         ...editedTask,
-        tags: [...editedTask.tags, newTag.trim()],
+        tags: [...currentTags, newTag.trim()],
       })
       setNewTag("")
     }
   }
 
   const removeTag = (tagToRemove: string) => {
+    const currentTags = editedTask.tags || []
     setEditedTask({
       ...editedTask,
-      tags: editedTask.tags.filter((tag) => tag !== tagToRemove),
+      tags: currentTags.filter((tag) => tag !== tagToRemove),
     })
   }
 
@@ -100,19 +112,13 @@ export function TaskModal({ task, open, onOpenChange, onUpdateTask, onDeleteTask
         content: newComment.trim(),
         timestamp: new Date()
       }
-      setEditedTask({
-        ...editedTask,
-        comments: [...editedTask.comments, comment]
-      })
+      setLocalComments([...localComments, comment])
       setNewComment("")
     }
   }
 
   const removeComment = (commentId: string) => {
-    setEditedTask({
-      ...editedTask,
-      comments: editedTask.comments.filter(c => c.id !== commentId)
-    })
+    setLocalComments(localComments.filter(c => c.id !== commentId))
   }
 
   const handleDeleteTask = () => {
@@ -224,13 +230,19 @@ export function TaskModal({ task, open, onOpenChange, onUpdateTask, onDeleteTask
             <div className="space-y-2">
               <Label className="text-white/90">Assignee</Label>
               <div className="flex items-center space-x-2 p-3 glass-card border-white/20 rounded-md">
-                <Avatar className="w-6 h-6">
-                  <AvatarImage src={editedTask.assignee.avatar || "/placeholder.svg"} />
-                  <AvatarFallback className="bg-purple-500 text-white text-xs">
-                    {editedTask.assignee.name.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-white text-sm">{editedTask.assignee.name}</span>
+                {editedTask.assignee ? (
+                  <>
+                    <Avatar className="w-6 h-6">
+                      <AvatarImage src={editedTask.assignee.avatar || "/placeholder.svg"} />
+                      <AvatarFallback className="bg-purple-500 text-white text-xs">
+                        {editedTask.assignee.name.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-white text-sm">{editedTask.assignee.name}</span>
+                  </>
+                ) : (
+                  <span className="text-white/50 text-sm">Unassigned</span>
+                )}
               </div>
             </div>
 
@@ -243,7 +255,7 @@ export function TaskModal({ task, open, onOpenChange, onUpdateTask, onDeleteTask
                     className="w-full justify-start glass-card border-white/20 text-white hover:bg-white/10 bg-transparent"
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {format(dueDate, "PPP")}
+                    {dueDate ? format(dueDate, "PPP") : "Select date"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0 glass-card border-white/20">
@@ -263,7 +275,7 @@ export function TaskModal({ task, open, onOpenChange, onUpdateTask, onDeleteTask
           <div className="space-y-2">
             <Label className="text-white/90">Tags</Label>
             <div className="flex flex-wrap gap-2 mb-2">
-              {editedTask.tags.map((tag) => (
+              {(editedTask.tags || []).map((tag) => (
                 <Badge
                   key={tag}
                   variant="secondary"
@@ -294,17 +306,17 @@ export function TaskModal({ task, open, onOpenChange, onUpdateTask, onDeleteTask
           <div className="space-y-2">
             <Label className="text-white/90 flex items-center gap-2">
               <MessageSquare className="w-4 h-4" />
-              Comments ({editedTask.comments.length})
+              Comments ({typeof editedTask.comments === 'number' ? editedTask.comments + localComments.length : localComments.length})
             </Label>
             
             {/* Existing Comments */}
             <div className="space-y-2 max-h-40 overflow-y-auto">
-              {editedTask.comments.length === 0 ? (
+              {localComments.length === 0 ? (
                 <div className="glass-card border-white/20 p-4 rounded-md">
                   <p className="text-white/70 text-sm">No comments yet. Be the first to add one!</p>
                 </div>
               ) : (
-                editedTask.comments.map((comment) => (
+                localComments.map((comment) => (
                   <div key={comment.id} className="bg-white/5 border border-white/10 rounded-lg p-3">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">

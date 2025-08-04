@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { TaskModal } from "@/components/task-modal"
 import { NewTaskModal } from "@/components/new-task-modal"
+import { useTasks } from "@/components/task-provider"
 import { ArrowLeft, Plus, MoreHorizontal, Calendar, Flag, MessageSquare, Trash2 } from "lucide-react"
 
 interface Comment {
@@ -23,13 +24,20 @@ interface Task {
   description: string
   status: "todo" | "in-progress" | "done"
   priority: "low" | "medium" | "high"
-  assignee: {
+  project_id: string
+  assignee_id?: string
+  created_by?: string
+  due_date?: string
+  completed_at?: string
+  created_at?: string
+  updated_at?: string
+  tags?: string[]
+  comments?: number
+  assignee?: {
+    id: string
     name: string
-    avatar: string
-  }
-  dueDate: string
-  tags: string[]
-  comments: Comment[]
+    avatar?: string
+  } | null
 }
 
 interface Project {
@@ -64,59 +72,21 @@ const priorityColors = {
   high: "bg-red-500/20 text-red-400 border-red-500/30",
 }
 
-// Helper functions for localStorage
-const getStorageKey = (projectId: string) => `taskflow_tasks_${projectId}`
-
-const loadTasksFromStorage = (projectId: string): Task[] => {
-  if (typeof window === 'undefined') return []
-  try {
-    const stored = localStorage.getItem(getStorageKey(projectId))
-    if (!stored) return []
-    const parsed = JSON.parse(stored)
-    // Convert timestamp strings back to Date objects for comments
-    return parsed.map((task: any) => ({
-      ...task,
-      comments: task.comments.map((comment: any) => ({
-        ...comment,
-        timestamp: new Date(comment.timestamp)
-      }))
-    }))
-  } catch (error) {
-    console.error('Error loading tasks from storage:', error)
-    return []
-  }
-}
-
-const saveTasksToStorage = (projectId: string, tasks: Task[]) => {
-  if (typeof window === 'undefined') return
-  try {
-    localStorage.setItem(getStorageKey(projectId), JSON.stringify(tasks))
-  } catch (error) {
-    console.error('Error saving tasks to storage:', error)
-  }
-}
-
 export function ProjectBoard({ project, onBack }: ProjectBoardProps) {
-  const [tasks, setTasks] = useState<Task[]>([])
+  const { tasks: allTasks, isLoading, loadTasksForProject, addTask, removeTask, updateTask } = useTasks()
+  const projectTasks = allTasks[project.id] || []
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [showNewTask, setShowNewTask] = useState(false)
   const [newTaskColumn, setNewTaskColumn] = useState<string>("todo")
 
   // Load tasks when component mounts or project changes
   useEffect(() => {
-    const loadedTasks = loadTasksFromStorage(project.id)
-    setTasks(loadedTasks)
-  }, [project.id])
-
-  // Save tasks whenever tasks change
-  useEffect(() => {
-    if (tasks.length > 0 || tasks.length === 0) { // Save even empty arrays to clear storage
-      saveTasksToStorage(project.id, tasks)
-    }
-  }, [tasks, project.id])
+    console.log('ProjectBoard: Loading tasks for project:', project.id)
+    loadTasksForProject(project.id)
+  }, [project.id, loadTasksForProject])
 
   const getTasksByStatus = (status: string) => {
-    return tasks.filter((task) => task.status === status)
+    return projectTasks.filter((task) => task.status === status)
   }
 
   const handleNewTask = (columnId: string) => {
@@ -127,35 +97,75 @@ export function ProjectBoard({ project, onBack }: ProjectBoardProps) {
     console.log('Modal should be open now')
   }
 
-  const handleCreateTask = (taskData: Omit<Task, "id">) => {
+  const handleCreateTask = async (taskData: Omit<Task, "id">) => {
     console.log('=== CREATING NEW TASK ===')
     console.log('Task data received:', taskData)
     
+    // Create task with project_id
     const newTask: Task = {
       ...taskData,
-      id: Date.now().toString(),
+      id: `temp-${Date.now()}`,
+      project_id: project.id,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     }
     
     console.log('New task created:', newTask)
-    console.log('Current tasks before adding:', tasks.length)
     
-    setTasks([...tasks, newTask])
+    // Add to global state immediately
+    addTask(project.id, newTask)
     setShowNewTask(false)
+    
+    // Try to save to database in background
+    try {
+      const { taskApi } = await import('@/lib/api')
+      const result = await taskApi.createTask({
+        title: taskData.title,
+        description: taskData.description,
+        status: taskData.status,
+        priority: taskData.priority,
+        project_id: project.id,
+        assignee_id: taskData.assignee_id,
+        created_by: taskData.created_by,
+        due_date: taskData.due_date
+      })
+      
+      console.log('Task saved to database:', result)
+      
+      // Update with real ID if successful
+      if (result) {
+        removeTask(project.id, newTask.id)
+        addTask(project.id, { ...newTask, id: result.id })
+      }
+    } catch (error) {
+      console.error('Database save failed:', error)
+      // Keep the task in local state even if DB save fails
+    }
     
     console.log('Task creation completed')
   }
 
-  const handleDeleteTask = (taskId: string) => {
+  const handleDeleteTask = async (taskId: string) => {
     console.log('=== DELETING TASK ===')
     console.log('Task ID to delete:', taskId)
-    console.log('Current tasks:', tasks.length)
-    console.log('Tasks before deletion:', tasks.map(t => ({ id: t.id, title: t.title })))
     
-    const newTasks = tasks.filter(task => task.id !== taskId)
-    console.log('Tasks after filtering:', newTasks.length)
-    
-    setTasks(newTasks)
+    // Remove from global state immediately
+    removeTask(project.id, taskId)
     setSelectedTask(null)
+    
+    // Try to delete from database
+    if (!taskId.startsWith('temp-')) {
+      try {
+        const { taskApi } = await import('@/lib/api')
+        await taskApi.deleteTask(taskId)
+        console.log('Task deleted from database:', taskId)
+      } catch (error) {
+        console.error('Database deletion failed:', error)
+        // Note: Tasks will be reloaded automatically by TaskProvider on next refresh
+      }
+    } else {
+      console.log('Skipping database deletion for temp task')
+    }
     
     console.log('Task deletion completed')
   }
@@ -292,24 +302,32 @@ export function ProjectBoard({ project, onBack }: ProjectBoardProps) {
 
                           <div className="flex items-center justify-between pt-2">
                             <div className="flex items-center space-x-2">
-                              <Avatar className="w-6 h-6">
-                                <AvatarImage src={task.assignee.avatar || "/placeholder.svg"} />
-                                <AvatarFallback className="bg-purple-500 text-white text-xs">
-                                  {task.assignee.name.charAt(0)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span className="text-white/70 text-xs">{task.assignee.name}</span>
+                              {task.assignee ? (
+                                <>
+                                  <Avatar className="w-6 h-6">
+                                    <AvatarImage src={task.assignee.avatar || "/placeholder.svg"} />
+                                    <AvatarFallback className="bg-purple-500 text-white text-xs">
+                                      {task.assignee.name.charAt(0)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <span className="text-white/70 text-xs">{task.assignee.name}</span>
+                                </>
+                              ) : (
+                                <span className="text-white/50 text-xs">Unassigned</span>
+                              )}
                             </div>
 
                             <div className="flex items-center space-x-2 text-white/60">
-                              <div className="flex items-center space-x-1">
-                                <Calendar className="w-3 h-3" />
-                                <span className="text-xs">{new Date(task.dueDate).toLocaleDateString()}</span>
-                              </div>
-                              {task.comments.length > 0 && (
+                              {task.due_date && (
+                                <div className="flex items-center space-x-1">
+                                  <Calendar className="w-3 h-3" />
+                                  <span className="text-xs">{new Date(task.due_date).toLocaleDateString()}</span>
+                                </div>
+                              )}
+                              {task.comments && task.comments > 0 && (
                                 <div className="flex items-center space-x-1">
                                   <MessageSquare className="w-3 h-3" />
-                                  <span className="text-xs">{task.comments.length}</span>
+                                  <span className="text-xs">{task.comments}</span>
                                 </div>
                               )}
                             </div>
@@ -332,7 +350,7 @@ export function ProjectBoard({ project, onBack }: ProjectBoardProps) {
           open={!!selectedTask}
           onOpenChange={(open) => !open && setSelectedTask(null)}
           onUpdateTask={(updatedTask) => {
-            setTasks(tasks.map((t) => (t.id === updatedTask.id ? updatedTask : t)))
+            updateTask(project.id, updatedTask.id, updatedTask)
             setSelectedTask(null)
           }}
           onDeleteTask={handleDeleteTask}

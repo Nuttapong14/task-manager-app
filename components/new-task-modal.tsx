@@ -65,7 +65,7 @@ export function NewTaskModal({ open, onOpenChange, initialStatus, onCreateTask, 
   const [priority, setPriority] = useState<"low" | "medium" | "high">(task?.priority || "medium")
   const [dueDate, setDueDate] = useState<Date>(task?.dueDate ? new Date(task.dueDate) : undefined)
   const [showCalendar, setShowCalendar] = useState(false)
-  const [selectedAssignee, setSelectedAssignee] = useState(task?.assignee ? mockUsers.find(u => u.name === task.assignee.name)?.id || mockUsers[0].id : mockUsers[0].id)
+  const [selectedAssignee, setSelectedAssignee] = useState(task?.assignee ? mockUsers.find(u => u.name === task.assignee?.name)?.id || mockUsers[0].id : mockUsers[0].id)
   const [tags, setTags] = useState<string[]>(task?.tags || [])
   const [newTag, setNewTag] = useState("")
 

@@ -1,78 +1,86 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { motion } from "framer-motion"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useAuth } from "@/components/simple-auth-provider"
-import { Mail, Lock, Sparkles, User } from "lucide-react"
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useAuth } from "@/components/simple-auth-provider";
+import { Mail, Lock, Sparkles, User } from "lucide-react";
 
 export function LoginForm() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [name, setName] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [isSignUp, setIsSignUp] = useState(false)
-  const [error, setError] = useState("")
-  const { login, signup } = useAuth()
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [error, setError] = useState("");
+  const { login, signup } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError("")
-    
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+
     // Client-side validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setError('Please enter a valid email address')
-      setIsLoading(false)
-      return
+      setError("Please enter a valid email address");
+      setIsLoading(false);
+      return;
     }
-    
+
     if (password.length < 6) {
-      setError('Password must be at least 6 characters long')
-      setIsLoading(false)
-      return
+      setError("Password must be at least 6 characters long");
+      setIsLoading(false);
+      return;
     }
-    
+
     if (isSignUp && name.trim().length < 2) {
-      setError('Name must be at least 2 characters long')
-      setIsLoading(false)
-      return
+      setError("Name must be at least 2 characters long");
+      setIsLoading(false);
+      return;
     }
-    
+
     try {
       if (isSignUp) {
-        await signup(email, password, name)
+        await signup(email, password, name);
       } else {
-        await login(email, password)
+        await login(email, password);
       }
     } catch (error: any) {
-      console.error("Auth failed:", error)
-      
+      console.error("Auth failed:", error);
+
       // More specific error handling
-      let errorMessage = error.message || `${isSignUp ? 'Sign up' : 'Login'} failed`
-      
+      let errorMessage =
+        error.message || `${isSignUp ? "Sign up" : "Login"} failed`;
+
       // Handle common Supabase auth errors
-      if (error.message?.includes('Invalid email')) {
-        errorMessage = 'Please enter a valid email address'
-      } else if (error.message?.includes('Email rate limit exceeded')) {
-        errorMessage = 'Too many requests. Please wait before trying again.'
-      } else if (error.message?.includes('Invalid login credentials')) {
-        errorMessage = 'Invalid email or password'
-      } else if (error.message?.includes('User already registered')) {
-        errorMessage = 'This email is already registered. Try signing in instead.'
+      if (error.message?.includes("Invalid email")) {
+        errorMessage = "Please enter a valid email address";
+      } else if (error.message?.includes("Email rate limit exceeded")) {
+        errorMessage = "Too many requests. Please wait before trying again.";
+      } else if (error.message?.includes("Invalid login credentials")) {
+        errorMessage = "Invalid email or password";
+      } else if (error.message?.includes("User already registered")) {
+        errorMessage =
+          "This email is already registered. Try signing in instead.";
       }
-      
-      setError(errorMessage)
+
+      setError(errorMessage);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -92,9 +100,13 @@ export function LoginForm() {
             >
               <Sparkles className="w-8 h-8 text-white" />
             </motion.div>
-            <CardTitle className="text-2xl font-bold text-white">Welcome to TaskFlow</CardTitle>
+            <CardTitle className="text-2xl font-bold text-white">
+              Welcome to TaskFlow
+            </CardTitle>
             <CardDescription className="text-white/70">
-              {isSignUp ? "Create your account to get started" : "Beautiful collaborative task management"}
+              {isSignUp
+                ? "Create your account to get started"
+                : "Beautiful collaborative task management"}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -152,15 +164,25 @@ export function LoginForm() {
                   />
                 </div>
               </div>
-              <Button type="submit" className="w-full glass-button text-white font-medium" disabled={isLoading}>
+              <Button
+                type="submit"
+                className="w-full glass-button text-white font-medium"
+                disabled={isLoading}
+              >
                 {isLoading ? (
                   <motion.div
                     animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+                    transition={{
+                      duration: 1,
+                      repeat: Number.POSITIVE_INFINITY,
+                      ease: "linear",
+                    }}
                     className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
                   />
+                ) : isSignUp ? (
+                  "Create Account"
                 ) : (
-                  isSignUp ? "Create Account" : "Sign In"
+                  "Sign In"
                 )}
               </Button>
             </form>
@@ -173,25 +195,31 @@ export function LoginForm() {
               <button
                 type="button"
                 onClick={() => {
-                  setIsSignUp(!isSignUp)
-                  setError("")
-                  setEmail("")
-                  setPassword("")
-                  setName("")
+                  setIsSignUp(!isSignUp);
+                  setError("");
+                  setEmail("");
+                  setPassword("");
+                  setName("");
                 }}
                 className="text-white/60 text-sm hover:text-white/80 transition-colors"
               >
-                {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
+                {isSignUp
+                  ? "Already have an account? Sign in"
+                  : "Don't have an account? Sign up"}
               </button>
               {!isSignUp ? (
-                <p className="text-white/60 text-sm">Demo credentials: any email/password</p>
+                <p className="text-white/60 text-sm">
+                  Demo credentials: any email/password
+                </p>
               ) : (
-                <p className="text-white/60 text-sm">Use a real email like: user@outlook.com</p>
+                <p className="text-white/60 text-sm">
+                  Use a real email like: user@outlook.com
+                </p>
               )}
             </div>
           </CardContent>
         </Card>
       </motion.div>
     </div>
-  )
+  );
 }

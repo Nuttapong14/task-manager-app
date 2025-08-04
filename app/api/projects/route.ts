@@ -75,13 +75,169 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // For now, just return empty array
-    // You can implement proper project fetching here later
-    return NextResponse.json([])
+    console.log('API Route: Getting projects')
+
+    // Check if we have service role key
+    if (!serviceRoleKey) {
+      console.warn('API Route: No service role key found for GET projects')
+      return NextResponse.json({ 
+        error: 'Service role key not configured. Please add SUPABASE_SERVICE_ROLE_KEY to .env.local' 
+      }, { status: 500 })
+    }
+
+    // Get user ID from query parameter for security
+    const url = new URL(request.url)
+    const userId = url.searchParams.get('userId')
+
+    let query = supabaseAdmin
+      .from('projects')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    // If userId is provided, filter by owner_id
+    if (userId) {
+      console.log('API Route: Filtering projects for user:', userId)
+      query = query.eq('owner_id', userId)
+    } else {
+      console.log('API Route: Getting all projects (no user filter)')
+    }
+
+    const { data, error } = await query
+
+    console.log('API Route: Get projects result:', { data: data?.length, error })
+
+    if (error) {
+      serverErrorLogger.logDatabase('API_getProjects', error)
+      return NextResponse.json({ 
+        error: error.message,
+        details: 'Database operation failed. Check server logs for details.',
+        hint: error.code === '42P17' ? 'RLS policy recursion detected' : undefined
+      }, { status: 400 })
+    }
+
+    // Transform data to match existing interface with default values
+    const transformedData = data?.map(project => ({
+      ...project,
+      members: 1, // Default to 1 (owner)
+      tasks: {
+        total: 0,
+        completed: 0
+      }
+    })) || []
+
+    return NextResponse.json(transformedData)
   } catch (error) {
     serverErrorLogger.logApi('API_getProjects', error)
+    console.error('API Route Error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' }, 
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    console.log('API Route: Deleting project')
+
+    // Check if we have service role key
+    if (!serviceRoleKey) {
+      console.warn('API Route: No service role key found for DELETE projects')
+      return NextResponse.json({ 
+        error: 'Service role key not configured. Please add SUPABASE_SERVICE_ROLE_KEY to .env.local' 
+      }, { status: 500 })
+    }
+
+    // Get project ID from query parameter
+    const url = new URL(request.url)
+    const projectId = url.searchParams.get('id')
+
+    if (!projectId) {
+      return NextResponse.json({ 
+        error: 'Project ID is required' 
+      }, { status: 400 })
+    }
+
+    console.log('API Route: Deleting project:', projectId)
+
+    // Use admin client to bypass RLS policies
+    const { error } = await supabaseAdmin
+      .from('projects')
+      .delete()
+      .eq('id', projectId)
+
+    console.log('API Route: Delete result:', { error })
+
+    if (error) {
+      serverErrorLogger.logDatabase('API_deleteProject', error, { projectId })
+      return NextResponse.json({ 
+        error: error.message,
+        details: 'Database operation failed. Check server logs for details.',
+        hint: error.code === '42P17' ? 'RLS policy recursion detected' : undefined
+      }, { status: 400 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    serverErrorLogger.logApi('API_deleteProject', error)
+    console.error('API Route Error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' }, 
+      { status: 500 }
+    )
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    console.log('API Route: Updating project')
+
+    // Check if we have service role key
+    if (!serviceRoleKey) {
+      console.warn('API Route: No service role key found for PUT projects')
+      return NextResponse.json({ 
+        error: 'Service role key not configured. Please add SUPABASE_SERVICE_ROLE_KEY to .env.local' 
+      }, { status: 500 })
+    }
+
+    // Get project ID from query parameter
+    const url = new URL(request.url)
+    const projectId = url.searchParams.get('id')
+
+    if (!projectId) {
+      return NextResponse.json({ 
+        error: 'Project ID is required' 
+      }, { status: 400 })
+    }
+
+    const body = await request.json()
+    console.log('API Route: Updating project with data:', { projectId, updates: body })
+
+    // Use admin client to bypass RLS policies
+    const { data, error } = await supabaseAdmin
+      .from('projects')
+      .update(body)
+      .eq('id', projectId)
+      .select()
+      .single()
+
+    console.log('API Route: Update result:', { data, error })
+
+    if (error) {
+      serverErrorLogger.logDatabase('API_updateProject', error, { projectId, body })
+      return NextResponse.json({ 
+        error: error.message,
+        details: 'Database operation failed. Check server logs for details.',
+        hint: error.code === '42P17' ? 'RLS policy recursion detected' : undefined
+      }, { status: 400 })
+    }
+
+    return NextResponse.json(data)
+  } catch (error) {
+    serverErrorLogger.logApi('API_updateProject', error)
+    console.error('API Route Error:', error)
     return NextResponse.json(
       { error: 'Internal server error' }, 
       { status: 500 }

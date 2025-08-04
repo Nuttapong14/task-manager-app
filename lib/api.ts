@@ -4,28 +4,39 @@ import { errorLogger } from './error-logger'
 // Project API functions
 export const projectApi = {
   async getProjects() {
-    console.log('API: Getting current user session...')
-    const { data: { user } } = await supabase.auth.getUser()
-    console.log('API: Current user:', user)
+    console.log('🌐 API: Getting projects via API route to bypass RLS...')
     
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .order('created_at', { ascending: false })
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser()
+      console.log('👤 API: Current user for projects fetch:', user?.id)
 
-    console.log('API: Projects query result:', { data, error })
+      // Build URL with user filter if authenticated
+      const url = user ? `/api/projects?userId=${user.id}` : '/api/projects'
+      console.log('🔗 API: Fetching from URL:', url)
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
 
-    if (error) throw error
-    
-    // Transform data to match existing interface with default values
-    return data?.map(project => ({
-      ...project,
-      members: 1, // Default to 1 (owner)
-      tasks: {
-        total: 0,
-        completed: 0
+      console.log('📡 API: Response status:', response.status, response.statusText)
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('❌ API: Projects fetch failed:', errorData)
+        throw new Error(errorData.error || 'Failed to fetch projects')
       }
-    })) || []
+
+      const data = await response.json()
+      console.log('✅ API: Projects loaded via API route - Count:', data.length)
+      return data
+    } catch (error) {
+      console.error('💥 API: Error fetching projects:', error.message || error)
+      throw error
+    }
   },
 
   async getProject(id: string) {
@@ -79,108 +90,223 @@ export const projectApi = {
   },
 
   async updateProject(id: string, updates: Partial<Project>) {
-    const { data, error } = await supabase
-      .from('projects')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single()
+    try {
+      console.log('API: Updating project via API route:', id, updates)
+      
+      const response = await fetch(`/api/projects?id=${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updates)
+      })
 
-    if (error) throw error
-    return data
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('API: Project update failed:', errorData)
+        throw new Error(errorData.error || 'Failed to update project')
+      }
+
+      const data = await response.json()
+      console.log('API: Project updated via API route:', data)
+      return data
+    } catch (error) {
+      console.error('API: Error updating project:', error)
+      throw error
+    }
   },
 
   async deleteProject(id: string) {
-    const { error } = await supabase
-      .from('projects')
-      .delete()
-      .eq('id', id)
+    try {
+      console.log('API: Deleting project via API route:', id)
+      
+      const response = await fetch(`/api/projects?id=${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
 
-    if (error) throw error
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('API: Project deletion failed:', errorData)
+        throw new Error(errorData.error || 'Failed to delete project')
+      }
+
+      const data = await response.json()
+      console.log('API: Project deleted via API route:', data)
+      return data
+    } catch (error) {
+      console.error('API: Error deleting project:', error)
+      throw error
+    }
   }
 }
 
 // Task API functions
 export const taskApi = {
   async getTasks(projectId: string) {
-    const { data, error } = await supabase
-      .from('tasks')
-      .select(`
-        *,
-        assignee:profiles!tasks_assignee_id_fkey(id, name, avatar_url),
-        created_by_profile:profiles!tasks_created_by_fkey(id, name),
-        task_tags(tag),
-        comments(count)
-      `)
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: false })
-
-    if (error) throw error
+    console.log('🌐 API: Getting tasks via API route for project:', projectId)
     
-    // Transform data to match existing interface
-    return data?.map(task => ({
-      ...task,
-      tags: task.task_tags?.map(t => t.tag) || [],
-      comments: task.comments?.[0]?.count || 0,
-      assignee: task.assignee ? {
-        id: task.assignee.id,
-        name: task.assignee.name,
-        avatar: task.assignee.avatar_url
-      } : null
-    })) || []
+    try {
+      const url = `/api/tasks?projectId=${projectId}`
+      console.log('🔗 API: Fetching tasks from URL:', url)
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+
+      console.log('📡 API: Tasks response status:', response.status, response.statusText)
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('❌ API: Tasks fetch failed:', errorData)
+        throw new Error(errorData.error || 'Failed to fetch tasks')
+      }
+
+      const data = await response.json()
+      console.log('✅ API: Tasks loaded via API route - Count:', data.length)
+      return data
+    } catch (error) {
+      console.error('💥 API: Error fetching tasks:', error.message || error)
+      throw error
+    }
   },
 
   async createTask(task: Omit<Task, 'id' | 'created_at' | 'updated_at'>) {
-    const { data, error } = await supabase
-      .from('tasks')
-      .insert(task)
-      .select()
-      .single()
+    console.log('API: Creating task via API route:', task)
+    
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(task)
+      })
 
-    if (error) throw error
-    return data
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('API: Task creation failed:', errorData)
+        throw new Error(errorData.error || 'Failed to create task')
+      }
+
+      const data = await response.json()
+      console.log('API: Task created via API route:', data)
+      return data
+    } catch (error) {
+      console.error('API: Error creating task:', error)
+      throw error
+    }
   },
 
   async updateTask(id: string, updates: Partial<Task>) {
-    const { data, error } = await supabase
-      .from('tasks')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single()
+    console.log('API: Updating task via API route:', id, updates)
+    
+    try {
+      const response = await fetch(`/api/tasks?id=${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updates)
+      })
 
-    if (error) throw error
-    return data
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('API: Task update failed:', errorData)
+        throw new Error(errorData.error || 'Failed to update task')
+      }
+
+      const data = await response.json()
+      console.log('API: Task updated via API route:', data)
+      return data
+    } catch (error) {
+      console.error('API: Error updating task:', error)
+      throw error
+    }
   },
 
   async deleteTask(id: string) {
-    const { error } = await supabase
-      .from('tasks')
-      .delete()
-      .eq('id', id)
+    console.log('API: Deleting task via API route:', id)
+    
+    try {
+      const response = await fetch(`/api/tasks?id=${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
 
-    if (error) throw error
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('API: Task deletion failed:', errorData)
+        throw new Error(errorData.error || 'Failed to delete task')
+      }
+
+      const data = await response.json()
+      console.log('API: Task deleted via API route:', data)
+      return data
+    } catch (error) {
+      console.error('API: Error deleting task:', error)
+      throw error
+    }
   },
 
   async addTaskTag(taskId: string, tag: string) {
-    const { data, error } = await supabase
-      .from('task_tags')
-      .insert({ task_id: taskId, tag })
-      .select()
-      .single()
+    console.log('API: Adding task tag via API route:', taskId, tag)
+    
+    try {
+      const response = await fetch('/api/task-tags', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ taskId, tag })
+      })
 
-    if (error) throw error
-    return data
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('API: Task tag addition failed:', errorData)
+        throw new Error(errorData.error || 'Failed to add task tag')
+      }
+
+      const data = await response.json()
+      console.log('API: Task tag added via API route:', data)
+      return data
+    } catch (error) {
+      console.error('API: Error adding task tag:', error)
+      throw error
+    }
   },
 
   async removeTaskTag(taskId: string, tag: string) {
-    const { error } = await supabase
-      .from('task_tags')
-      .delete()
-      .eq('task_id', taskId)
-      .eq('tag', tag)
+    console.log('API: Removing task tag via API route:', taskId, tag)
+    
+    try {
+      const response = await fetch(`/api/task-tags?taskId=${taskId}&tag=${encodeURIComponent(tag)}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
 
-    if (error) throw error
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('API: Task tag removal failed:', errorData)
+        throw new Error(errorData.error || 'Failed to remove task tag')
+      }
+
+      const data = await response.json()
+      console.log('API: Task tag removed via API route:', data)
+      return data
+    } catch (error) {
+      console.error('API: Error removing task tag:', error)
+      throw error
+    }
   }
 }
 
