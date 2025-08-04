@@ -25,7 +25,7 @@ A modern, responsive task management application built with Next.js 14, React 18
 
 1. Clone the repository:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/nuttapong/task-manager-app.git
    cd task-manager-app
    ```
 
@@ -154,6 +154,17 @@ The application uses the following main tables:
 ## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🔗 Demo
+
+Visit the live demo: [TaskFlow App](https://task-manager-app-demo.vercel.app) *(Update with your actual deployment URL)*
+
+## 📊 Screenshots
+
+![TaskFlow Dashboard](./public/screenshot-dashboard.png)
+![Kanban Board](./public/screenshot-kanban.png)
+
+*Add screenshots to showcase your application*
 
 ## 🙏 Acknowledgments
 
